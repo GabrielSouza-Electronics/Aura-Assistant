@@ -7,7 +7,7 @@
 #define BSP_LED_TIMER_PERIOD_TICKS  300U
 #define BSP_LED_TIMER_CLOCK_HZ      240000000UL
 #define BSP_LED_ZERO_HIGH_TICKS     72U  /* 300 ns */
-#define BSP_LED_ONE_HIGH_TICKS      204U /* 850 ns */
+#define BSP_LED_ONE_HIGH_TICKS      156U /* 650 ns high, 600 ns low */
 #define BSP_LED_RESET_SLOTS         240U /* 300 us; datasheet requires >280 us */
 #define BSP_LED_PWM_BUFFER_LENGTH   \
     ((BSP_LED_COUNT * WS2812C_BITS_PER_PIXEL) + BSP_LED_RESET_SLOTS)

@@ -298,11 +298,7 @@ void Sensor_Task(void *argument)
 void Power_Task(void *argument)
 {
   /* USER CODE BEGIN Power_Task */
-  /* Infinite loop */
-  for(;;)
-  {
-    osDelay(1);
-  }
+  APP_PowerTask();
   /* USER CODE END Power_Task */
 }
 
@@ -316,11 +312,7 @@ void Power_Task(void *argument)
 void LED_Task(void *argument)
 {
   /* USER CODE BEGIN LED_Task */
-  /* Infinite loop */
-  for(;;)
-  {
-    osDelay(1);
-  }
+  APP_LEDTask();
   /* USER CODE END LED_Task */
 }
 

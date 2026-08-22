@@ -3,6 +3,8 @@
 
 #include <stdint.h>
 
+#include "bsp_power.h"
+
 /* Temporary hardware-isolation build: keep the LTDC color-gradient pattern
    on screen and do not start TouchGFX/RTOS. Set to 0 after the test. */
 #define APP_LCD_COLOR_DIAGNOSTIC 0
@@ -50,7 +52,20 @@ typedef struct
 
 extern volatile APP_DisplayDiagnostics_t app_display_diagnostics;
 
+typedef struct
+{
+    uint32_t magic;
+    uint32_t update_count;
+    uint32_t error_count;
+    BSP_POWER_Status_t status;
+    BSP_POWER_Data_t data;
+} APP_PowerDiagnostics_t;
+
+extern volatile APP_PowerDiagnostics_t app_power_diagnostics;
+
 void APP_Init(void);
+void APP_LEDTask(void);
+void APP_PowerTask(void);
 APP_InitStatus_t APP_GetInitStatus(void);
 void APP_DisplayDiagnosticsPoll(void);
 

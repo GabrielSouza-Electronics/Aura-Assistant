@@ -2,7 +2,7 @@
 
 #include "bsp_flash.h"
 #include "bsp_lcd.h"
-#include "bsp_led.h"
+#include "cmsis_os2.h"
 #include "ltdc.h"
 
 #define APP_LCD_WIDTH             480U
@@ -18,6 +18,9 @@ extern uint8_t __external_flash_end__;
 static volatile APP_InitStatus_t app_init_status = APP_INIT_NOT_STARTED;
 volatile APP_DisplayDiagnostics_t app_display_diagnostics = {
     .magic = 0x41555241U /* "AURA" */
+};
+volatile APP_PowerDiagnostics_t app_power_diagnostics = {
+    .magic = 0x50575244U /* "PWRD" */
 };
 
 void APP_DisplayDiagnosticsPoll(void)
@@ -124,7 +127,6 @@ void APP_Init(void)
 {
     BSP_FLASH_Status_t flash_status;
     BSP_LCD_Status_t lcd_status;
-    BSP_LED_Status_t led_status;
 
     app_init_status = APP_INIT_FLASH_BSP_ERROR;
     flash_status = BSP_FLASH_Init();
@@ -173,27 +175,6 @@ void APP_Init(void)
         return;
     }
 
-    app_init_status = APP_INIT_LED_BSP_ERROR;
-    led_status = BSP_LED_Init();
-    if (led_status != BSP_LED_OK)
-    {
-        return;
-    }
-
-    app_init_status = APP_INIT_LED_FILL_ERROR;
-    led_status = BSP_LED_Fill(255U, 0U, 0U);
-    if (led_status != BSP_LED_OK)
-    {
-        return;
-    }
-
-    app_init_status = APP_INIT_LED_TRANSFER_ERROR;
-    led_status = BSP_LED_ShowBlocking(10U);
-    if (led_status != BSP_LED_OK)
-    {
-        return;
-    }
-
     app_init_status = APP_INIT_OK;
     APP_DisplayDiagnosticsPoll();
 }
@@ -201,4 +182,49 @@ void APP_Init(void)
 APP_InitStatus_t APP_GetInitStatus(void)
 {
     return app_init_status;
+}
+
+void APP_LEDTask(void)
+{
+    /* LED bring-up is intentionally paused during power-board validation. */
+    for (;;)
+    {
+        osDelay(1000U);
+    }
+}
+
+void APP_PowerTask(void)
+{
+    BSP_POWER_Data_t data = {0};
+
+    app_power_diagnostics.status = BSP_POWER_Init();
+    if (app_power_diagnostics.status != BSP_POWER_OK)
+    {
+        ++app_power_diagnostics.error_count;
+    }
+
+    for (;;)
+    {
+        const BSP_POWER_Status_t status = BSP_POWER_Read(&data);
+
+        app_power_diagnostics.status = status;
+        if (status == BSP_POWER_OK)
+        {
+            app_power_diagnostics.data.battery_adc_raw = data.battery_adc_raw;
+            app_power_diagnostics.data.battery_adc_mv = data.battery_adc_mv;
+            app_power_diagnostics.data.battery_mv = data.battery_mv;
+            app_power_diagnostics.data.battery_percent = data.battery_percent;
+            app_power_diagnostics.data.charger_pin_high = data.charger_pin_high;
+            app_power_diagnostics.data.usb_status_pin_high = data.usb_status_pin_high;
+            app_power_diagnostics.data.charging = data.charging;
+            app_power_diagnostics.data.usb_connected = data.usb_connected;
+            ++app_power_diagnostics.update_count;
+        }
+        else
+        {
+            ++app_power_diagnostics.error_count;
+        }
+
+        osDelay(250U);
+    }
 }
