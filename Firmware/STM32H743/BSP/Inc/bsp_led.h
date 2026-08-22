@@ -1,0 +1,35 @@
+#ifndef BSP_LED_H
+#define BSP_LED_H
+
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
+
+#define BSP_LED_COUNT 10U
+
+typedef enum
+{
+    BSP_LED_OK = 0,
+    BSP_LED_INVALID_ARGUMENT,
+    BSP_LED_NOT_INITIALIZED,
+    BSP_LED_TIMER_CONFIG_ERROR,
+    BSP_LED_DRIVER_ERROR,
+    BSP_LED_BUSY,
+    BSP_LED_HAL_ERROR,
+    BSP_LED_TIMEOUT
+} BSP_LED_Status_t;
+
+BSP_LED_Status_t BSP_LED_Init(void);
+BSP_LED_Status_t BSP_LED_SetPixel(size_t index,
+                                 uint8_t red,
+                                 uint8_t green,
+                                 uint8_t blue);
+BSP_LED_Status_t BSP_LED_Fill(uint8_t red, uint8_t green, uint8_t blue);
+BSP_LED_Status_t BSP_LED_Show(void);
+BSP_LED_Status_t BSP_LED_ShowBlocking(uint32_t timeout_ms);
+bool BSP_LED_IsBusy(void);
+
+/* Called from the HAL PWM completion callback. */
+void BSP_LED_TIM_PWM_PulseFinishedCallback(void *timer_instance);
+
+#endif
