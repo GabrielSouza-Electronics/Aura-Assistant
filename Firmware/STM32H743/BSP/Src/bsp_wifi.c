@@ -37,11 +37,12 @@ BSP_WIFI_Status_t BSP_WIFI_Init(void)
         return BSP_WIFI_ERROR_SPI_INIT;
     }
 
-    /* Mission mode and inactive ST SPI chip-select. The ST67 SPI transport
-       asserts CS high; keep it low until the middleware owns the bus. */
+    /* Reproduce the cold-boot sequence validated on the Aura PCB. */
+    HAL_GPIO_WritePin(WIFI_PWR_EN_GPIO_Port, WIFI_PWR_EN_Pin, GPIO_PIN_RESET);
     HAL_GPIO_WritePin(WIFI_EN_GPIO_Port, WIFI_EN_Pin, GPIO_PIN_RESET);
     HAL_GPIO_WritePin(WIFI_BOOT_GPIO_Port, WIFI_BOOT_Pin, GPIO_PIN_RESET);
     HAL_GPIO_WritePin(WIFI_CS_GPIO_Port, WIFI_CS_Pin, GPIO_PIN_RESET);
+    HAL_Delay(100U);
 
     HAL_GPIO_WritePin(WIFI_PWR_EN_GPIO_Port, WIFI_PWR_EN_Pin, GPIO_PIN_SET);
     bsp_wifi_ready_irq_count = 0U;
@@ -56,7 +57,9 @@ BSP_WIFI_Status_t BSP_WIFI_Init(void)
     bsp_wifi_spi_engine_last_event_bits = 0U;
     bsp_wifi_spi_engine_deinit_count = 0U;
     memset(bsp_wifi_spi_last_rx, 0, sizeof(bsp_wifi_spi_last_rx));
-    HAL_Delay(10U);
+    /* The module first asserted RDY about 808 ms after CHIP_EN on REV01.
+       Give the 3V3_WIFI rail time to settle before the middleware raises it. */
+    HAL_Delay(100U);
 
     return (HAL_GPIO_ReadPin(WIFI_PWR_EN_GPIO_Port, WIFI_PWR_EN_Pin) ==
             GPIO_PIN_SET) ? BSP_WIFI_OK : BSP_WIFI_ERROR_INVALID_STATE;

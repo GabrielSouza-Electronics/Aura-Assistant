@@ -40,7 +40,9 @@ typedef void (*spi_transaction_complete_t)(void);
 
 /* Exported constants --------------------------------------------------------*/
 /** Transfer with size greater than this value should use DMA */
-#define SPI_DMA_XFER_SIZE_THRESHOLD     8U
+/* Aura REV01 bring-up: FreeRTOS heap is in DTCM, which DMA1 cannot access.
+ * Keep ST67 transfers in polling mode until its buffers are moved to D2. */
+#define SPI_DMA_XFER_SIZE_THRESHOLD     1600U
 
 /** SPI wait txn data ready timeout in milliseconds */
 #define SPI_WAIT_TXN_TIMEOUT_MS         2000

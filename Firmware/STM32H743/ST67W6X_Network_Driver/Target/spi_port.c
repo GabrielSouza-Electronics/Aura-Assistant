@@ -75,7 +75,7 @@ static spi_transaction_complete_t spi_port_transaction_complete_cb = NULL;
 static const char spi_port_error_str[] = "SPI not initialized\n";
 
 /* USER CODE BEGIN PV */
-
+static uint8_t spi_port_poll_dummy[SPI_DMA_XFER_SIZE_THRESHOLD];
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -200,9 +200,12 @@ int32_t spi_port_transfer(void *tx_buf, void *rx_buf, uint16_t len, uint32_t tim
   }
   else
   {
-    assert_param(len <= SPI_DMA_XFER_SIZE_THRESHOLD);
-    uint8_t tx_dummy[SPI_DMA_XFER_SIZE_THRESHOLD] = {0};
-    status = HAL_SPI_TransmitReceive(&NCP_SPI_HANDLE, tx_dummy, rx_buf, len, timeout);
+    if (len > sizeof(spi_port_poll_dummy))
+    {
+      return -1;
+    }
+    status = HAL_SPI_TransmitReceive(&NCP_SPI_HANDLE, spi_port_poll_dummy,
+                                     rx_buf, len, timeout);
   }
   BSP_WIFI_SPITransferObserved((uint32_t)status, rx_buf, len);
   /* USER CODE BEGIN spi_port_transfer_2 */
@@ -364,7 +367,18 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
   if (GPIO_Pin == SPI_RDY_Pin)
   {
     BSP_WIFI_ReadyIRQObserved();
-    (void)spi_on_txn_data_ready();
+    /* RDY is configured on both edges.  A rising edge announces a pending
+     * transaction; the falling edge during an active transaction is the
+     * peer's header acknowledgement.  Reporting both as TXN_RDY leaves the
+     * transfer engine waiting for an ACK event that can never arrive. */
+    if (HAL_GPIO_ReadPin(SPI_RDY_GPIO_Port, SPI_RDY_Pin) == GPIO_PIN_SET)
+    {
+      (void)spi_on_txn_data_ready();
+    }
+    else
+    {
+      (void)spi_on_header_ack();
+    }
   }
 }
 /* USER CODE END WFR */

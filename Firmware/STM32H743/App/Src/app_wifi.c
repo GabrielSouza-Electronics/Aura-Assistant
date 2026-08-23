@@ -163,6 +163,20 @@ void APP_WiFiTask(void)
         memcpy((void *)app_wifi_diagnostics.module_mac,
                module_info->Mac_Address,
                sizeof(app_wifi_diagnostics.module_mac));
+        memcpy((void *)app_wifi_diagnostics.module_sdk_version,
+               &module_info->SDK_Version,
+               sizeof(app_wifi_diagnostics.module_sdk_version));
+        memcpy((void *)app_wifi_diagnostics.module_at_version,
+               &module_info->AT_Version,
+               sizeof(app_wifi_diagnostics.module_at_version));
+        memcpy((void *)app_wifi_diagnostics.module_build_date,
+               module_info->Build_Date,
+               sizeof(app_wifi_diagnostics.module_build_date));
+        memcpy((void *)app_wifi_diagnostics.module_name,
+               module_info->ModuleID.ModuleName,
+               sizeof(app_wifi_diagnostics.module_name));
+        app_wifi_diagnostics.module_id =
+            (uint32_t)module_info->ModuleID.ModuleID;
     }
 
     app_wifi_diagnostics.wifi_init_status = (uint32_t)W6X_WiFi_Init();

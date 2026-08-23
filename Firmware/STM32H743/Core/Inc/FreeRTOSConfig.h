@@ -92,7 +92,11 @@ extern uint32_t SystemCoreClock;
 
 /* Software timer definitions. */
 #define configUSE_TIMERS                         1
-#define configTIMER_TASK_PRIORITY                ( 2 )
+/* ST67 RDY uses xEventGroupSetBitsFromISR(), which is deferred through the
+ * FreeRTOS timer service queue.  Keep the daemon directly below the modem
+ * (54) and SPI engine (53), otherwise the NCP boot event can remain pending
+ * until W6X_Init() has already timed out. */
+#define configTIMER_TASK_PRIORITY                ( 52 )
 #define configTIMER_QUEUE_LENGTH                 10
 #define configTIMER_TASK_STACK_DEPTH             256
 

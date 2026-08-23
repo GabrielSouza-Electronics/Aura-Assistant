@@ -204,6 +204,11 @@ typedef struct
     uint32_t log_history_line[8];
     char log_history[8][96];
     uint8_t module_mac[6];
+    uint8_t module_sdk_version[4];
+    uint8_t module_at_version[4];
+    uint8_t module_build_date[32];
+    char module_name[25];
+    uint32_t module_id;
     uint8_t ble_address[6];
     bool powered;
     bool enabled;

@@ -48,6 +48,12 @@ extern void BSP_WIFI_SPIEngineTaskCreated(uint32_t create_status);
 extern void BSP_WIFI_SPIEngineTaskStarted(void);
 extern void BSP_WIFI_SPIEngineTaskWoke(uint32_t event_bits);
 extern void BSP_WIFI_SPIEngineDeinitialized(void);
+extern void BSP_WIFI_SPIFrameObserved(uint32_t type, uint32_t length,
+                                      bool queue_bound, const void *payload);
+extern void BSP_WIFI_SPIQueueSendObserved(bool success, uint32_t waiting);
+extern void BSP_WIFI_SPIReadEntered(uint32_t type, uint32_t queue_handle,
+                                    uint32_t waiting);
+extern void BSP_WIFI_SPIQueueHandleObserved(uint32_t queue_handle);
 #include "spi_port.h"
 
 /** SPI header magic code */
@@ -744,6 +750,12 @@ static int32_t spi_xfer_one(struct spi_xfer_engine *engine, struct spi_buffer *t
     uint8_t msg_type = psh->type;
     spi_buffer_set_traffic_type(rxbuf, msg_type);
 
+    BSP_WIFI_SPIFrameObserved(
+        msg_type, psh->len,
+        ((msg_type < (uint8_t)SPI_MSG_CTRL_TRAFFIC_TYPE_MAX) &&
+         ((engine->rxq_bound & (1U << msg_type)) != 0U)),
+        rxbuf->data);
+
     /*
      * Note: Thread safety consideration required here.
      * If a queue is unbound by another thread while we're accessing it,
@@ -773,6 +785,11 @@ static int32_t spi_xfer_one(struct spi_xfer_engine *engine, struct spi_buffer *t
       }
 
       ret = xQueueSend(engine->rxq[msg_type], &rxbuf, portMAX_DELAY);
+      BSP_WIFI_SPIQueueHandleObserved(
+          (uint32_t)(uintptr_t)engine->rxq[msg_type]);
+      BSP_WIFI_SPIQueueSendObserved(
+          ret == pdTRUE,
+          (uint32_t)uxQueueMessagesWaiting(engine->rxq[msg_type]));
       if (ret != pdTRUE)
       {
         spi_trace(SPI_TP_NONE, "failed to send to type %d rxq, msg discarded\r\n", msg_type);
@@ -1101,6 +1118,8 @@ int32_t spi_read(struct spi_msg *msg, int32_t timeout_ms)
 
   /* Get the target queue for this traffic type */
   targetQ = xfer_engine.rxq[traffic_type];
+  BSP_WIFI_SPIReadEntered(traffic_type, (uint32_t)(uintptr_t)targetQ,
+                          (uint32_t)uxQueueMessagesWaiting(targetQ));
   spi_trace(SPI_TP_READ, "spi_read type %d\r\n", traffic_type);
 
   /* Set up timeout value */
