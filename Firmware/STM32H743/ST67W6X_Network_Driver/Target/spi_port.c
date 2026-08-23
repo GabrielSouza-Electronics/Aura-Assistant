@@ -37,7 +37,8 @@
 #include "main.h"
 
 /* USER CODE BEGIN Includes */
-
+#include "bsp_wifi.h"
+#include "spi_iface.h"
 /* USER CODE END Includes */
 
 /* Global variables ----------------------------------------------------------*/
@@ -203,6 +204,7 @@ int32_t spi_port_transfer(void *tx_buf, void *rx_buf, uint16_t len, uint32_t tim
     uint8_t tx_dummy[SPI_DMA_XFER_SIZE_THRESHOLD] = {0};
     status = HAL_SPI_TransmitReceive(&NCP_SPI_HANDLE, tx_dummy, rx_buf, len, timeout);
   }
+  BSP_WIFI_SPITransferObserved((uint32_t)status, rx_buf, len);
   /* USER CODE BEGIN spi_port_transfer_2 */
 
   /* USER CODE END spi_port_transfer_2 */
@@ -277,11 +279,13 @@ int32_t spi_port_set_cs(int32_t state)
   {
     /* Activate Chip Select before starting transfer */
     HAL_GPIO_WritePin(SPI_CS_GPIO_Port, SPI_CS_Pin, GPIO_PIN_SET);
+    BSP_WIFI_CSObserved(true);
   }
   else
   {
     /* Disable Chip Select when transfer is complete */
     HAL_GPIO_WritePin(SPI_CS_GPIO_Port, SPI_CS_Pin, GPIO_PIN_RESET);
+    BSP_WIFI_CSObserved(false);
   }
   /* USER CODE BEGIN spi_port_set_cs_2 */
 
@@ -355,5 +359,12 @@ void HAL_SPI_ErrorCallback(SPI_HandleTypeDef *hspi)
 }
 
 /* USER CODE BEGIN WFR */
-
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+{
+  if (GPIO_Pin == SPI_RDY_Pin)
+  {
+    BSP_WIFI_ReadyIRQObserved();
+    (void)spi_on_txn_data_ready();
+  }
+}
 /* USER CODE END WFR */

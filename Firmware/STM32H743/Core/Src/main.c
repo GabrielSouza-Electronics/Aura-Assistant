@@ -38,6 +38,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "app.h"
+#include "bsp_audio_out.h"
 #include "bsp_led.h"
 /* USER CODE END Includes */
 
@@ -251,6 +252,54 @@ void PeriphCommonClock_Config(void)
 void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim)
 {
   BSP_LED_TIM_PWM_PulseFinishedCallback((void *)htim->Instance);
+}
+
+void HAL_I2S_TxCpltCallback(I2S_HandleTypeDef *hi2s)
+{
+  if (hi2s->Instance == SPI1)
+  {
+    BSP_AUDIO_OUT_TransferCompleteCallback();
+  }
+}
+
+void HAL_I2S_ErrorCallback(I2S_HandleTypeDef *hi2s)
+{
+  if (hi2s->Instance == SPI1)
+  {
+    BSP_AUDIO_OUT_ErrorCallback(hi2s->ErrorCode);
+  }
+}
+
+void HAL_I2S_TxHalfCpltCallback(I2S_HandleTypeDef *hi2s)
+{
+  if (hi2s->Instance == SPI1)
+  {
+    BSP_AUDIO_OUT_HalfTransferCallback();
+  }
+}
+
+void HAL_SAI_RxHalfCpltCallback(SAI_HandleTypeDef *hsai)
+{
+  if (hsai->Instance == SAI1_Block_A)
+  {
+    BSP_AUDIO_IN_HalfTransferCallback();
+  }
+}
+
+void HAL_SAI_RxCpltCallback(SAI_HandleTypeDef *hsai)
+{
+  if (hsai->Instance == SAI1_Block_A)
+  {
+    BSP_AUDIO_IN_TransferCompleteCallback();
+  }
+}
+
+void HAL_SAI_ErrorCallback(SAI_HandleTypeDef *hsai)
+{
+  if (hsai->Instance == SAI1_Block_A)
+  {
+    BSP_AUDIO_IN_ErrorCallback(hsai->ErrorCode);
+  }
 }
 
 /* USER CODE END 4 */

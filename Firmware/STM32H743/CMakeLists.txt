@@ -80,6 +80,9 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
 
     # Application
     App/Src/app.c
+    App/Src/app_hand_tracking.c
+    App/Src/app_logging.c
+    App/Src/app_wifi.c
 
     # Board Support Package
     BSP/Src/bsp_lcd.c
@@ -96,8 +99,14 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     Components/ST7701S/st7701s.c
     Components/W25Q128/w25q128.c
     Components/ISM330DLC/ism330dlc.c
+    Components/ISM330DLC/ism330dlc_reg.c
     Components/VL53L5CX/vl53l5cx.c
+    Components/VL53L5CX/uld/platform.c
+    Components/VL53L5CX/uld/vl53l5cx_api.c
     Components/WS2812C/ws2812c.c
+    Components/AudioSFX/audio_sfx.c
+    Components/PDM/pdm_decimator.c
+    Components/AudioDSP/audio_dsp.c
 )
 
 # ---------------------------------------------------------------------------
@@ -117,7 +126,11 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
     Components/W25Q128
     Components/ISM330DLC
     Components/VL53L5CX
+    Components/VL53L5CX/uld
     Components/WS2812C
+    Components/AudioSFX
+    Components/PDM
+    Components/AudioDSP
 )
 
 # Produce independent programming images. Keeping QSPI out of the internal

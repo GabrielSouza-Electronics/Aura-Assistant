@@ -2,8 +2,14 @@
 #define APP_H
 
 #include <stdint.h>
+#include <stddef.h>
 
 #include "bsp_power.h"
+#include "bsp_imu.h"
+#include "bsp_tof.h"
+#include "bsp_audio_out.h"
+#include "bsp_audio_in.h"
+#include "bsp_wifi.h"
 
 /* Temporary hardware-isolation build: keep the LTDC color-gradient pattern
    on screen and do not start TouchGFX/RTOS. Set to 0 after the test. */
@@ -63,9 +69,163 @@ typedef struct
 
 extern volatile APP_PowerDiagnostics_t app_power_diagnostics;
 
+typedef struct
+{
+    uint32_t magic;
+    uint32_t update_count;
+    uint32_t error_count;
+    BSP_IMU_Status_t init_status;
+    BSP_IMU_Status_t read_status;
+    BSP_IMU_Data_t data;
+} APP_IMUDiagnostics_t;
+
+typedef struct
+{
+    uint32_t magic;
+    uint32_t update_count;
+    uint32_t no_data_count;
+    uint32_t error_count;
+    BSP_TOF_Status_t init_status;
+    BSP_TOF_Status_t read_status;
+    BSP_TOF_Data_t data;
+} APP_TOFDiagnostics_t;
+
+extern volatile APP_IMUDiagnostics_t app_imu_diagnostics;
+extern volatile APP_TOFDiagnostics_t app_tof_diagnostics;
+
+typedef struct
+{
+    uint32_t magic;
+    uint32_t play_count;
+    uint32_t error_count;
+    BSP_AUDIO_OUT_Status_t init_status;
+    BSP_AUDIO_OUT_Status_t last_status;
+    AUDIO_SFX_Id_t current_effect;
+    AUDIO_SFX_Id_t requested_effect;
+    bool busy;
+    uint32_t last_hal_error;
+} APP_AudioOutDiagnostics_t;
+
+extern volatile APP_AudioOutDiagnostics_t app_audio_out_diagnostics;
+
+/* Hardware validation mode: microphone PDM -> PCM -> I2S speaker loopback.
+   It owns the audio output path, so UI sound effects are suspended. */
+#define APP_AUDIO_ECHO_TEST 1U
+
+typedef struct
+{
+    uint32_t magic;
+    uint32_t block_count;
+    uint32_t error_count;
+    uint32_t overrun_count;
+    uint32_t output_underrun_count;
+    uint32_t peak_left;
+    uint32_t peak_right;
+    BSP_AUDIO_IN_Status_t init_status;
+    BSP_AUDIO_IN_Status_t start_status;
+    BSP_AUDIO_IN_Status_t last_input_status;
+    BSP_AUDIO_OUT_Status_t last_output_status;
+    uint32_t input_hal_error;
+    uint32_t output_hal_error;
+    uint32_t recorded_samples;
+    uint32_t processed_peak;
+    uint32_t combined_peak;
+    uint32_t noise_floor;
+    uint32_t gate_threshold;
+    uint32_t gain_q12;
+    int8_t right_polarity;
+    bool speech_detected;
+    bool recording;
+    bool playing;
+    bool running;
+} APP_AudioEchoDiagnostics_t;
+
+extern volatile APP_AudioEchoDiagnostics_t app_audio_echo_diagnostics;
+
+typedef enum
+{
+    APP_WIFI_STATE_OFF = 0,
+    APP_WIFI_STATE_POWERED,
+    APP_WIFI_STATE_CORE_READY,
+    APP_WIFI_STATE_RADIOS_READY,
+    APP_WIFI_STATE_BLE_ADVERTISING,
+    APP_WIFI_STATE_ERROR
+} APP_WiFiState_t;
+
+typedef struct
+{
+    uint32_t magic;
+    APP_WiFiState_t state;
+    uint32_t error_count;
+    BSP_WIFI_Status_t bsp_status;
+    uint32_t core_status;
+    uint32_t callback_status;
+    uint32_t wifi_init_status;
+    uint32_t wifi_scan_status;
+    uint32_t wifi_scan_callback_status;
+    uint32_t wifi_ap_count;
+    int32_t wifi_best_rssi;
+    uint32_t ble_init_status;
+    uint32_t ble_adv_status;
+    uint32_t last_wifi_event;
+    uint32_t last_ble_event;
+    uint32_t last_driver_error;
+    uint32_t ble_connection_count;
+    uint32_t log_count;
+    uint32_t last_log_level;
+    uint32_t last_log_line;
+    uint32_t ready_irq_count;
+    uint32_t spi_state_before_init;
+    uint32_t spi_state_after_init;
+    uint32_t spi_error;
+    uint32_t spi_reinit_count;
+    uint32_t spi_transfer_count;
+    uint32_t spi_last_hal_status;
+    uint32_t spi_last_length;
+    uint32_t spi_cs_assert_count;
+    uint32_t spi_cs_deassert_count;
+    uint32_t spi_forced_ready_kick_count;
+    uint32_t spi_engine_task_create_status;
+    uint32_t spi_engine_task_start_count;
+    uint32_t spi_engine_task_wake_count;
+    uint32_t spi_engine_last_event_bits;
+    uint32_t spi_engine_deinit_count;
+    uint32_t spi_engine_task_present;
+    uint32_t spi_engine_initialized;
+    uint32_t spi_engine_init_stage;
+    uint32_t spi_engine_task_handle;
+    uint8_t spi_last_rx[8];
+    uint32_t heap_free_before_core;
+    uint32_t heap_free_after_core;
+    uint32_t heap_minimum_ever_free;
+    uint32_t log_history_next;
+    char last_log[128];
+    uint32_t log_history_level[8];
+    uint32_t log_history_line[8];
+    char log_history[8][96];
+    uint8_t module_mac[6];
+    uint8_t ble_address[6];
+    bool powered;
+    bool enabled;
+    bool ready;
+    bool wifi_connected;
+    bool wifi_has_ip;
+    bool ble_connected;
+} APP_WiFiDiagnostics_t;
+
+extern volatile APP_WiFiDiagnostics_t app_wifi_diagnostics;
+
 void APP_Init(void);
 void APP_LEDTask(void);
 void APP_PowerTask(void);
+void APP_SensorTask(void);
+void APP_SystemTask(void);
+void APP_AudioOutputTask(void);
+void APP_AudioInputTask(void);
+void APP_WiFiTask(void);
+void APP_AudioPlayEffect(AUDIO_SFX_Id_t effect);
+const int16_t *APP_AudioRecording_Get(size_t *sample_count,
+                                      uint32_t *sample_rate_hz);
 APP_InitStatus_t APP_GetInitStatus(void);
 void APP_DisplayDiagnosticsPoll(void);
 

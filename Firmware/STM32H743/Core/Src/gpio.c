@@ -83,7 +83,7 @@ void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(LCD_SCL_GPIO_Port, LCD_SCL_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(I2S_SDMODE_GPIO_Port, I2S_SDMODE_Pin, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(I2S_SDMODE_GPIO_Port, I2S_SDMODE_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pins : TOF_LPn_Pin WIFI_PWR_EN_Pin */
   GPIO_InitStruct.Pin = TOF_LPn_Pin|WIFI_PWR_EN_Pin;

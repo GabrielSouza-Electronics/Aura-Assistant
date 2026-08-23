@@ -224,13 +224,8 @@ void MX_FREERTOS_Init(void) {
 /* USER CODE END Header_System_Task */
 void System_Task(void *argument)
 {
-  /* USER CODE BEGIN System_Task */
-  /* Infinite loop */
-  for(;;)
-  {
-    APP_DisplayDiagnosticsPoll();
-    osDelay(10);
-  }
+  /* USER CODE BEGIN System_Task */ 
+  APP_SystemTask();
   /* USER CODE END System_Task */
 }
 
@@ -244,11 +239,7 @@ void System_Task(void *argument)
 void AudioInput_Task(void *argument)
 {
   /* USER CODE BEGIN AudioInput_Task */
-  /* Infinite loop */
-  for(;;)
-  {
-    osDelay(1);
-  }
+  APP_AudioInputTask();
   /* USER CODE END AudioInput_Task */
 }
 
@@ -262,11 +253,7 @@ void AudioInput_Task(void *argument)
 void WiFi_Task(void *argument)
 {
   /* USER CODE BEGIN WiFi_Task */
-  /* Infinite loop */
-  for(;;)
-  {
-    osDelay(1);
-  }
+  APP_WiFiTask();
   /* USER CODE END WiFi_Task */
 }
 
@@ -280,11 +267,7 @@ void WiFi_Task(void *argument)
 void Sensor_Task(void *argument)
 {
   /* USER CODE BEGIN Sensor_Task */
-  /* Infinite loop */
-  for(;;)
-  {
-    osDelay(1);
-  }
+  APP_SensorTask();
   /* USER CODE END Sensor_Task */
 }
 
@@ -344,11 +327,7 @@ void Logging_Task(void *argument)
 void AudioOutput_Task(void *argument)
 {
   /* USER CODE BEGIN AudioOutput_Task */
-  /* Infinite loop */
-  for(;;)
-  {
-    osDelay(1);
-  }
+  APP_AudioOutputTask();
   /* USER CODE END AudioOutput_Task */
 }
 
