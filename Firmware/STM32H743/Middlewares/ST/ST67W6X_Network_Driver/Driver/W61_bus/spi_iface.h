@@ -279,13 +279,6 @@ void spi_dump(void);
 int32_t spi_get_stats(struct spi_stat *stat);
 
 /* Aura transport bring-up snapshot. Remove after hardware validation. */
-void spi_get_bringup_diagnostics(uint32_t *task_present,
-                                 uint32_t *task_start_count,
-                                 uint32_t *task_wake_count,
-                                 uint32_t *last_event_bits,
-                                 uint32_t *initialized,
-                                 uint32_t *init_stage,
-                                 uint32_t *task_handle);
 
 #ifdef __cplusplus
 }

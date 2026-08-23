@@ -1,8 +1,6 @@
 #include "app.h"
 
 #include "cmsis_os2.h"
-#include "FreeRTOS.h"
-#include "spi_iface.h"
 #include "w6x_api.h"
 
 #include <limits.h>
@@ -110,12 +108,6 @@ void APP_WiFiTask(void)
     W6X_WiFi_Scan_Opts_t scan_options = {0};
 
     app_wifi_diagnostics.bsp_status = BSP_WIFI_Init();
-    app_wifi_diagnostics.spi_state_before_init =
-        BSP_WIFI_GetSPIStateBeforeInit();
-    app_wifi_diagnostics.spi_state_after_init =
-        BSP_WIFI_GetSPIStateAfterInit();
-    app_wifi_diagnostics.spi_error = BSP_WIFI_GetSPIError();
-    app_wifi_diagnostics.spi_reinit_count = BSP_WIFI_GetSPIReinitCount();
     app_wifi_diagnostics.powered = BSP_WIFI_IsPowered();
     app_wifi_diagnostics.enabled = BSP_WIFI_IsEnabled();
     app_wifi_diagnostics.ready = BSP_WIFI_IsReady();
@@ -127,22 +119,9 @@ void APP_WiFiTask(void)
     }
     app_wifi_diagnostics.state = APP_WIFI_STATE_POWERED;
 
-    app_wifi_diagnostics.heap_free_before_core = xPortGetFreeHeapSize();
     app_wifi_diagnostics.core_status = (uint32_t)W6X_Init();
-    app_wifi_diagnostics.heap_free_after_core = xPortGetFreeHeapSize();
-    app_wifi_diagnostics.heap_minimum_ever_free =
-        xPortGetMinimumEverFreeHeapSize();
     if (APP_WiFiStatusFailed((W6X_Status_t)app_wifi_diagnostics.core_status))
     {
-        /* Diagnostic only: if RDY stayed high, re-submit the event once after
-         * the modem-ready timeout.  A resulting SPI transfer proves that the
-         * engine task is alive and that the original RDY event was missed. */
-        if (BSP_WIFI_IsReady())
-        {
-            ++app_wifi_diagnostics.spi_forced_ready_kick_count;
-            (void)spi_on_txn_data_ready();
-            osDelay(100U);
-        }
         goto idle;
     }
     app_wifi_diagnostics.state = APP_WIFI_STATE_CORE_READY;
@@ -219,35 +198,6 @@ idle:
         app_wifi_diagnostics.powered = BSP_WIFI_IsPowered();
         app_wifi_diagnostics.enabled = BSP_WIFI_IsEnabled();
         app_wifi_diagnostics.ready = BSP_WIFI_IsReady();
-        app_wifi_diagnostics.ready_irq_count = BSP_WIFI_GetReadyIRQCount();
-        app_wifi_diagnostics.spi_transfer_count =
-            BSP_WIFI_GetSPITransferCount();
-        app_wifi_diagnostics.spi_last_hal_status =
-            BSP_WIFI_GetSPILastHALStatus();
-        app_wifi_diagnostics.spi_last_length = BSP_WIFI_GetSPILastLength();
-        app_wifi_diagnostics.spi_cs_assert_count =
-            BSP_WIFI_GetCSAssertCount();
-        app_wifi_diagnostics.spi_cs_deassert_count =
-            BSP_WIFI_GetCSDeassertCount();
-        app_wifi_diagnostics.spi_engine_task_create_status =
-            BSP_WIFI_GetSPIEngineTaskCreateStatus();
-        app_wifi_diagnostics.spi_engine_task_start_count =
-            BSP_WIFI_GetSPIEngineTaskStartCount();
-        app_wifi_diagnostics.spi_engine_task_wake_count =
-            BSP_WIFI_GetSPIEngineTaskWakeCount();
-        app_wifi_diagnostics.spi_engine_last_event_bits =
-            BSP_WIFI_GetSPIEngineLastEventBits();
-        app_wifi_diagnostics.spi_engine_deinit_count =
-            BSP_WIFI_GetSPIEngineDeinitCount();
-        spi_get_bringup_diagnostics(
-            (uint32_t *)&app_wifi_diagnostics.spi_engine_task_present,
-            (uint32_t *)&app_wifi_diagnostics.spi_engine_task_start_count,
-            (uint32_t *)&app_wifi_diagnostics.spi_engine_task_wake_count,
-            (uint32_t *)&app_wifi_diagnostics.spi_engine_last_event_bits,
-            (uint32_t *)&app_wifi_diagnostics.spi_engine_initialized,
-            (uint32_t *)&app_wifi_diagnostics.spi_engine_init_stage,
-            (uint32_t *)&app_wifi_diagnostics.spi_engine_task_handle);
-        BSP_WIFI_GetSPILastRX((uint8_t *)app_wifi_diagnostics.spi_last_rx);
 
         if (app_wifi_restart_advertising)
         {

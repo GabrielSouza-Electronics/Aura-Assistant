@@ -41,19 +41,6 @@
 
 #include "spi_iface.h"
 
-/* Aura bring-up diagnostics; remove after transport validation.  Kept as
- * narrow hooks here because the generated middleware target must not depend
- * on the board BSP include path. */
-extern void BSP_WIFI_SPIEngineTaskCreated(uint32_t create_status);
-extern void BSP_WIFI_SPIEngineTaskStarted(void);
-extern void BSP_WIFI_SPIEngineTaskWoke(uint32_t event_bits);
-extern void BSP_WIFI_SPIEngineDeinitialized(void);
-extern void BSP_WIFI_SPIFrameObserved(uint32_t type, uint32_t length,
-                                      bool queue_bound, const void *payload);
-extern void BSP_WIFI_SPIQueueSendObserved(bool success, uint32_t waiting);
-extern void BSP_WIFI_SPIReadEntered(uint32_t type, uint32_t queue_handle,
-                                    uint32_t waiting);
-extern void BSP_WIFI_SPIQueueHandleObserved(uint32_t queue_handle);
 #include "spi_port.h"
 
 /** SPI header magic code */
@@ -170,10 +157,6 @@ static struct spi_xfer_engine xfer_engine = {0};
 static StaticTask_t spi_xfer_engine_task_control_block;
 static StackType_t spi_xfer_engine_task_stack[SPI_THREAD_STACK_SIZE /
                                                sizeof(StackType_t)];
-static volatile uint32_t spi_bringup_task_start_count;
-static volatile uint32_t spi_bringup_task_wake_count;
-static volatile uint32_t spi_bringup_last_event_bits;
-static volatile uint32_t spi_bringup_init_stage;
 
 /** SPI buffer alignment mask */
 #define SPI_BUF_ALIGN_MASK              (0x0003U)
@@ -750,12 +733,6 @@ static int32_t spi_xfer_one(struct spi_xfer_engine *engine, struct spi_buffer *t
     uint8_t msg_type = psh->type;
     spi_buffer_set_traffic_type(rxbuf, msg_type);
 
-    BSP_WIFI_SPIFrameObserved(
-        msg_type, psh->len,
-        ((msg_type < (uint8_t)SPI_MSG_CTRL_TRAFFIC_TYPE_MAX) &&
-         ((engine->rxq_bound & (1U << msg_type)) != 0U)),
-        rxbuf->data);
-
     /*
      * Note: Thread safety consideration required here.
      * If a queue is unbound by another thread while we're accessing it,
@@ -785,11 +762,6 @@ static int32_t spi_xfer_one(struct spi_xfer_engine *engine, struct spi_buffer *t
       }
 
       ret = xQueueSend(engine->rxq[msg_type], &rxbuf, portMAX_DELAY);
-      BSP_WIFI_SPIQueueHandleObserved(
-          (uint32_t)(uintptr_t)engine->rxq[msg_type]);
-      BSP_WIFI_SPIQueueSendObserved(
-          ret == pdTRUE,
-          (uint32_t)uxQueueMessagesWaiting(engine->rxq[msg_type]));
       if (ret != pdTRUE)
       {
         spi_trace(SPI_TP_NONE, "failed to send to type %d rxq, msg discarded\r\n", msg_type);
@@ -896,9 +868,6 @@ static void spi_xfer_engine_task(void *arg)
   EventBits_t bits;
   struct spi_xfer_engine *engine = arg;
 
-  BSP_WIFI_SPIEngineTaskStarted();
-  ++spi_bringup_task_start_count;
-
   /* Wait for events and process them. */
   while (engine->stop == 0)
   {
@@ -906,9 +875,6 @@ static void spi_xfer_engine_task(void *arg)
     bits = SPI_EVT_TXN_PENDING | SPI_EVT_TXN_RDY;
     bits = xEventGroupWaitBits(engine->event, bits, pdTRUE, pdFALSE,
                                portMAX_DELAY);
-    BSP_WIFI_SPIEngineTaskWoke((uint32_t)bits);
-    spi_bringup_last_event_bits = (uint32_t)bits;
-    ++spi_bringup_task_wake_count;
     spi_trace(SPI_TP_NONE, "Got event bits %" PRIx32 "\n", bits);
     if ((bits & SPI_EVT_TXN_RDY) != 0U)
     {
@@ -929,11 +895,6 @@ int32_t spi_transaction_init(void)
 {
   int32_t ret;
 
-  spi_bringup_task_start_count = 0U;
-  spi_bringup_task_wake_count = 0U;
-  spi_bringup_last_event_bits = 0U;
-  spi_bringup_init_stage = 1U;
-
   /* Initialize rxq array to NULL and rxq_bound to 0 */
   (void)memset(xfer_engine.rxq, 0, sizeof(xfer_engine.rxq));
   xfer_engine.rxq_bound = 0;
@@ -946,7 +907,6 @@ int32_t spi_transaction_init(void)
     ret = -1;
     goto error;
   }
-  spi_bringup_init_stage = 2U;
 
   /* Create TX queue */
   xfer_engine.txq = xQueueCreate(SPI_TXQ_LEN, sizeof(void *));
@@ -956,14 +916,12 @@ int32_t spi_transaction_init(void)
     ret = -1;
     goto error;
   }
-  spi_bringup_init_stage = 3U;
 
   if (spi_port_init(spi_on_transaction_complete) != 0)
   {
     ret = -1;
     goto error;
   }
-  spi_bringup_init_stage = 4U;
 
   /* Create SPI transfer engine task */
   xfer_engine.stop = 0;
@@ -972,11 +930,6 @@ int32_t spi_transaction_init(void)
       SPI_THREAD_STACK_SIZE / sizeof(StackType_t), &xfer_engine,
       SPI_THREAD_PRIO, spi_xfer_engine_task_stack,
       &spi_xfer_engine_task_control_block);
-  spi_bringup_init_stage = 5U;
-  BaseType_t task_create_status =
-      (xfer_engine.task != NULL) ? pdPASS : pdFAIL;
-  BSP_WIFI_SPIEngineTaskCreated((uint32_t)task_create_status);
-
   if (xfer_engine.task == NULL)
   {
     spi_err("Failed to create spi xfer engine task\n");
@@ -993,7 +946,6 @@ int32_t spi_transaction_init(void)
 
   xfer_engine.rx_stall = 0;
   xfer_engine.initialized = 1;
-  spi_bringup_init_stage = 6U;
   return 0;
 
 error:
@@ -1015,7 +967,6 @@ error:
 
 int32_t spi_transaction_deinit(void)
 {
-  BSP_WIFI_SPIEngineDeinitialized();
   if (xfer_engine.task != NULL)
   {
     vTaskDelete(xfer_engine.task);
@@ -1118,8 +1069,6 @@ int32_t spi_read(struct spi_msg *msg, int32_t timeout_ms)
 
   /* Get the target queue for this traffic type */
   targetQ = xfer_engine.rxq[traffic_type];
-  BSP_WIFI_SPIReadEntered(traffic_type, (uint32_t)(uintptr_t)targetQ,
-                          (uint32_t)uxQueueMessagesWaiting(targetQ));
   spi_trace(SPI_TP_READ, "spi_read type %d\r\n", traffic_type);
 
   /* Set up timeout value */
@@ -1361,44 +1310,6 @@ int32_t spi_get_stats(struct spi_stat *stat)
 
   *stat = xfer_engine.stat;
   return 0;
-}
-
-void spi_get_bringup_diagnostics(uint32_t *task_present,
-                                 uint32_t *task_start_count,
-                                 uint32_t *task_wake_count,
-                                 uint32_t *last_event_bits,
-                                 uint32_t *initialized,
-                                 uint32_t *init_stage,
-                                 uint32_t *task_handle)
-{
-  if (task_present != NULL)
-  {
-    *task_present = (xfer_engine.task != NULL) ? 1U : 0U;
-  }
-  if (task_start_count != NULL)
-  {
-    *task_start_count = spi_bringup_task_start_count;
-  }
-  if (task_wake_count != NULL)
-  {
-    *task_wake_count = spi_bringup_task_wake_count;
-  }
-  if (last_event_bits != NULL)
-  {
-    *last_event_bits = spi_bringup_last_event_bits;
-  }
-  if (initialized != NULL)
-  {
-    *initialized = (uint32_t)xfer_engine.initialized;
-  }
-  if (init_stage != NULL)
-  {
-    *init_stage = spi_bringup_init_stage;
-  }
-  if (task_handle != NULL)
-  {
-    *task_handle = (uint32_t)(uintptr_t)xfer_engine.task;
-  }
 }
 
 int32_t spi_rxd_callback_register(spi_msg_ctrl_t type, spi_rxd_notify_func_t cb, void *arg)

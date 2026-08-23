@@ -21,9 +21,6 @@
 #include "w61_at_internal.h"
 #include "w61_io.h"
 
-extern void BSP_WIFI_ModemReadObserved(int32_t received, const void *payload);
-extern void BSP_WIFI_ModemReadyMatched(void);
-extern void BSP_WIFI_ModemTaskStarted(void);
 #include <stdlib.h>
 #include "modem_cmd_handler.h"
 #include "stdio.h"
@@ -43,11 +40,7 @@ extern void BSP_WIFI_ModemTaskStarted(void);
 #define IO_SEND_TIMEOUT                         2000U
 
 /** Timeout for io receive operation */
-/* A finite wait is intentional on Aura REV01.  The initial NCP frame was
- * successfully queued but did not wake a receiver blocked with
- * portMAX_DELAY.  The modem process already retries reads, so a short finite
- * wait preserves blocking behaviour while guaranteeing forward progress. */
-#define IO_RECEIVE_TIMEOUT                      100U
+#define IO_RECEIVE_TIMEOUT                      portMAX_DELAY
 
 #ifndef IO_AT_CMDQ_DEPTH
 /** IO queue depth for AT CMD */
@@ -700,8 +693,6 @@ static void W61_Modem_Process_task(void *arg)
 {
   struct modem *mdm = (struct modem *) arg;
 
-  BSP_WIFI_ModemTaskStarted();
-
   while (true)
   {
     modem_cmd_handler_process(&mdm->handler,
@@ -723,20 +714,7 @@ static int32_t modem_iface_spi_write(struct modem_iface *iface,
 static int32_t modem_iface_spi_read(struct modem_iface *iface,
                                     uint8_t *buf, size_t size, size_t *bytes_read)
 {
-  int32_t received = BusIo_SPI_ReceiveData(SPI_MSG_CTRL_TRAFFIC_AT_CMD, buf, size,
-                                           IO_RECEIVE_TIMEOUT);
-  BSP_WIFI_ModemReadObserved(received, buf);
-  /* The boot notification is the transport readiness handshake itself.  On
-   * Aura REV01 the complete frame reaches this interface, but the generic
-   * line parser does not signal it before the initialization timeout.  Signal
-   * the exact, bounded boot token here and still pass it to the parser below. */
-  if ((received == 9) &&
-      (memcmp(buf, "\r\nready\r\n", 9U) == 0))
-  {
-    struct modem *mdm = CONTAINER_OF(iface, struct modem, iface);
-    (void)xSemaphoreGive(mdm->sem_if_ready);
-    BSP_WIFI_ModemReadyMatched();
-  }
+  int32_t received = BusIo_SPI_ReceiveData(SPI_MSG_CTRL_TRAFFIC_AT_CMD, buf, size, portMAX_DELAY);
   AT_LOG_HOST_IN(buf, received);
   if (received < 0)
   {
@@ -827,8 +805,6 @@ MODEM_CMD_DEFINE(on_cmd_error)
 MODEM_CMD_DEFINE(on_cmd_ready)
 {
   struct modem *mdm = (struct modem *) data->user_data;
-
-  BSP_WIFI_ModemReadyMatched();
 
   (void)xSemaphoreGive(mdm->sem_if_ready);
 
