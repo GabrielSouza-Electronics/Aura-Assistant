@@ -6,8 +6,16 @@
 #include <touchgfx/hal/Types.hpp>
 #include <touchgfx/Bitmap.hpp>
 
-const uint16_t BITMAP_PICTURE7_ID = 0;
-const uint16_t BITMAP_PICTURE8_ID = 1;
+const uint16_t BITMAP_BATTERY50_ID = 0;
+const uint16_t BITMAP_BATTERYFRAME_ID = 1;
+const uint16_t BITMAP_BATTERYFULL_ID = 2;
+const uint16_t BITMAP_BATTERYLOW_ID = 3;
+const uint16_t BITMAP_CALENDARBIG_ID = 4;
+const uint16_t BITMAP_DOTEFFECT_ID = 5;
+const uint16_t BITMAP_ICONMAINSELECTED_ID = 6;
+const uint16_t BITMAP_ICONSIDESELECTED_ID = 7;
+const uint16_t BITMAP_RING_EFFECT_ID = 8;
+const uint16_t BITMAP_SELECTEDBOX_ID = 9;
 
 namespace BitmapDatabase
 {

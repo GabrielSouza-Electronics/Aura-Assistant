@@ -258,7 +258,7 @@ static const uint8_t porch_setting[] = {0x10U, 0x0CU};
 static const uint8_t inversion_setting[] = {0x07U, 0x0AU};
 /* Physical RGB panel scan orientation requested for the assembled display.
    TouchGFX coordinates remain unchanged. */
-static const uint8_t x_direction[] = {0x00U};
+static const uint8_t x_direction[] = {0x04U};
 static const uint8_t panel_control[] = {0x10U};
 static const uint8_t positive_gamma[] = {
     0x05U, 0x12U, 0x98U, 0x0EU, 0x0FU, 0x07U, 0x07U, 0x09U,
