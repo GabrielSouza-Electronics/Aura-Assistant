@@ -6,6 +6,7 @@
 #include "audio_dsp.h"
 #include "bsp_flash.h"
 #include "bsp_lcd.h"
+#include "bsp_led.h"
 #include "cmsis_os2.h"
 #include "ltdc.h"
 
@@ -34,6 +35,7 @@ static volatile APP_InitStatus_t app_init_status = APP_INIT_NOT_STARTED;
 volatile APP_DisplayDiagnostics_t app_display_diagnostics = {
     .magic = 0x41555241U /* "AURA" */
 };
+volatile BSP_LED_Status_t app_led_status = BSP_LED_NOT_INITIALIZED;
 volatile APP_PowerDiagnostics_t app_power_diagnostics = {
     .magic = 0x50575244U /* "PWRD" */
 };
@@ -52,7 +54,9 @@ volatile APP_AudioEchoDiagnostics_t app_audio_echo_diagnostics = {
     .magic = 0x4543484FU /* "ECHO" */
 };
 static osThreadId_t app_audio_output_thread;
+#if APP_AUDIO_ECHO_TEST
 static osThreadId_t app_audio_input_thread;
+#endif
 
 __attribute__((section(".dma_buffer.audio_record"), aligned(32)))
 static int16_t app_audio_recording[APP_AUDIO_RECORD_SAMPLES];
@@ -93,6 +97,7 @@ static void APP_AudioSignal(void)
     }
 }
 
+#if APP_AUDIO_ECHO_TEST
 static void APP_AudioInputSignal(void)
 {
     if (app_audio_input_thread != NULL)
@@ -140,6 +145,7 @@ void HAL_LTDC_ErrorCallback(LTDC_HandleTypeDef *handle)
     app_display_diagnostics.ltdc_last_error = handle->ErrorCode;
 }
 
+#if !APP_LED_WHITE_DIAGNOSTIC
 static bool APP_FLASH_ValidateMappedContent(void)
 {
     const volatile uint8_t *start =
@@ -201,9 +207,82 @@ static bool APP_LCD_ClearFramebuffer(void)
 
     return true;
 }
+#endif
+#endif
 
 void APP_Init(void)
 {
+#if APP_LED_GPIO_DIAGNOSTIC
+    GPIO_InitTypeDef gpio = {0};
+
+    /* The normal generated configuration selects AF1/TIM1_CH2. Override only
+       for this isolated board-level signal-integrity test. */
+    HAL_GPIO_WritePin(DATA_LED_GPIO_Port, DATA_LED_Pin, GPIO_PIN_RESET);
+    gpio.Pin = DATA_LED_Pin;
+    gpio.Mode = GPIO_MODE_OUTPUT_PP;
+    gpio.Pull = GPIO_NOPULL;
+    gpio.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+    HAL_GPIO_Init(DATA_LED_GPIO_Port, &gpio);
+
+    __set_BASEPRI(0U);
+    __DSB();
+    __ISB();
+    app_init_status = APP_INIT_OK;
+
+    for (;;)
+    {
+        HAL_GPIO_WritePin(DATA_LED_GPIO_Port, DATA_LED_Pin, GPIO_PIN_SET);
+        HAL_Delay(500U);
+        HAL_GPIO_WritePin(DATA_LED_GPIO_Port, DATA_LED_Pin, GPIO_PIN_RESET);
+        HAL_Delay(500U);
+    }
+#elif APP_LED_WHITE_DIAGNOSTIC
+    /* TouchGFX creates CMSIS-RTOS objects before the scheduler starts. The
+       FreeRTOS Cortex-M port intentionally leaves BASEPRI at
+       configMAX_SYSCALL_INTERRUPT_PRIORITY during this pre-scheduler phase.
+       This isolated test never starts the scheduler, so release that mask to
+       allow the TIM1 DMA completion IRQ to run. */
+    __set_BASEPRI(0U);
+    __DSB();
+    __ISB();
+
+    app_init_status = APP_INIT_LED_BSP_ERROR;
+    app_led_status = BSP_LED_Init();
+    if (app_led_status != BSP_LED_OK)
+    {
+        for (;;)
+        {
+            __WFI();
+        }
+    }
+
+    app_init_status = APP_INIT_LED_FILL_ERROR;
+    /* Reproduce the original known-good REV01 bring-up pattern exactly. */
+    app_led_status = BSP_LED_Fill(255U, 0U, 0U);
+    if (app_led_status != BSP_LED_OK)
+    {
+        for (;;)
+        {
+            __WFI();
+        }
+    }
+
+    app_init_status = APP_INIT_OK;
+    for (;;)
+    {
+        app_led_status = BSP_LED_ShowBlocking(100U);
+        if (app_led_status != BSP_LED_OK)
+        {
+            app_init_status = APP_INIT_LED_TRANSFER_ERROR;
+            for (;;)
+            {
+                __WFI();
+            }
+        }
+
+        HAL_Delay(100U);
+    }
+#else
     BSP_FLASH_Status_t flash_status;
     BSP_LCD_Status_t lcd_status;
 
@@ -256,6 +335,7 @@ void APP_Init(void)
 
     app_init_status = APP_INIT_OK;
     APP_DisplayDiagnosticsPoll();
+#endif
 }
 
 APP_InitStatus_t APP_GetInitStatus(void)

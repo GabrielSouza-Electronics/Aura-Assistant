@@ -2,5 +2,6 @@
     "cmake.cmakePath": "cube-cmake",
     "cmake.configureArgs": [
         "-DCMAKE_COMMAND=cube-cmake"
-    ]
+    ],
+    "cmake.sourceDirectory": "C:/Users/elect/Aura-Assistant/Firmware/STM32H743"
 }

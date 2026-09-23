@@ -10,10 +10,20 @@
 #include "bsp_audio_out.h"
 #include "bsp_audio_in.h"
 #include "bsp_wifi.h"
+#include "bsp_led.h"
 
 /* Temporary hardware-isolation build: keep the LTDC color-gradient pattern
    on screen and do not start TouchGFX/RTOS. Set to 0 after the test. */
 #define APP_LCD_COLOR_DIAGNOSTIC 0
+
+/* Temporary electrical test: override PA9/TIM1_CH2 as a push-pull GPIO and
+   toggle it every 500 ms. This takes precedence over the WS2812 test. */
+#define APP_LED_GPIO_DIAGNOSTIC 0
+
+/* Temporary hardware-isolation build: illuminate all board WS2812C LEDs in
+   white and stop before the RTOS or any other BSP is started. Set to 0 after
+   the bring-up test. */
+#define APP_LED_WHITE_DIAGNOSTIC 1
 
 typedef enum
 {
@@ -57,6 +67,7 @@ typedef struct
 } APP_DisplayDiagnostics_t;
 
 extern volatile APP_DisplayDiagnostics_t app_display_diagnostics;
+extern volatile BSP_LED_Status_t app_led_status;
 
 typedef struct
 {
@@ -110,7 +121,7 @@ extern volatile APP_AudioOutDiagnostics_t app_audio_out_diagnostics;
 
 /* Hardware validation mode: microphone PDM -> PCM -> I2S speaker loopback.
    It owns the audio output path, so UI sound effects are suspended. */
-#define APP_AUDIO_ECHO_TEST 1U
+#define APP_AUDIO_ECHO_TEST 0U
 
 typedef struct
 {
