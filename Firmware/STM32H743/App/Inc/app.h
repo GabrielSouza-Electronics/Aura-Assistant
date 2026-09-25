@@ -12,19 +12,6 @@
 #include "bsp_wifi.h"
 #include "bsp_led.h"
 
-/* Temporary hardware-isolation build: keep the LTDC color-gradient pattern
-   on screen and do not start TouchGFX/RTOS. Set to 0 after the test. */
-#define APP_LCD_COLOR_DIAGNOSTIC 0
-
-/* Temporary electrical test: override PA9/TIM1_CH2 as a push-pull GPIO and
-   toggle it every 500 ms. This takes precedence over the WS2812 test. */
-#define APP_LED_GPIO_DIAGNOSTIC 0
-
-/* Temporary hardware-isolation build: illuminate all board WS2812C LEDs in
-   white and stop before the RTOS or any other BSP is started. Set to 0 after
-   the bring-up test. */
-#define APP_LED_WHITE_DIAGNOSTIC 1
-
 typedef enum
 {
     APP_INIT_NOT_STARTED = 0,
@@ -111,8 +98,6 @@ typedef struct
     uint32_t error_count;
     BSP_AUDIO_OUT_Status_t init_status;
     BSP_AUDIO_OUT_Status_t last_status;
-    AUDIO_SFX_Id_t current_effect;
-    AUDIO_SFX_Id_t requested_effect;
     bool busy;
     uint32_t last_hal_error;
 } APP_AudioOutDiagnostics_t;
@@ -207,7 +192,6 @@ void APP_SystemTask(void);
 void APP_AudioOutputTask(void);
 void APP_AudioInputTask(void);
 void APP_WiFiTask(void);
-void APP_AudioPlayEffect(AUDIO_SFX_Id_t effect);
 const int16_t *APP_AudioRecording_Get(size_t *sample_count,
                                       uint32_t *sample_rate_hz);
 APP_InitStatus_t APP_GetInitStatus(void);

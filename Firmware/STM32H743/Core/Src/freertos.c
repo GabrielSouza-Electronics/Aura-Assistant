@@ -54,7 +54,7 @@ osThreadId_t SystemTaskHandle;
 const osThreadAttr_t SystemTask_attributes = {
   .name = "SystemTask",
   .stack_size = 1024 * 4,
-  .priority = (osPriority_t) osPriorityNormal,
+  .priority = (osPriority_t) osPriorityAboveNormal,
 };
 /* Definitions for TouchGFXTask */
 osThreadId_t TouchGFXTaskHandle;
@@ -96,7 +96,7 @@ osThreadId_t LEDTaskHandle;
 const osThreadAttr_t LEDTask_attributes = {
   .name = "LEDTask",
   .stack_size = 512 * 4,
-  .priority = (osPriority_t) osPriorityBelowNormal,
+  .priority = (osPriority_t) osPriorityAboveNormal,
 };
 /* Definitions for LoggingTask */
 osThreadId_t LoggingTaskHandle;

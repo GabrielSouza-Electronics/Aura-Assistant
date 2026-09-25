@@ -12,6 +12,17 @@
             "Height": 480
           },
           {
+            "Type": "AnimatedImage",
+            "Name": "animatedImage1",
+            "Width": 480,
+            "Height": 480,
+            "FileNameFirst": "circ_carousel.png",
+            "FileNameLast": "circ_standby.png",
+            "UpdateTicksInterval": 3000,
+            "StartOnLoad": true,
+            "LoopEnabled": true
+          },
+          {
             "Type": "Circle",
             "Name": "Ring",
             "Width": 480,
@@ -29,182 +40,20 @@
             "CapPrecision": "Butt"
           },
           {
-            "Type": "Image",
-            "Name": "Ring_Effect",
-            "Width": 480,
-            "Height": 480,
-            "RelativeFilename": "Ring_Effect.png"
-          },
-          {
-            "Type": "Image",
-            "Name": "BatteryBody",
-            "X": 307,
-            "Y": 42,
-            "Width": 30,
-            "Height": 15,
-            "RelativeFilename": "BatteryFrame.png"
-          },
-          {
-            "Type": "Image",
-            "Name": "Battery50",
-            "X": 310,
-            "Y": 45,
-            "Width": 12,
-            "Height": 9,
-            "Visible": false,
-            "RelativeFilename": "Battery50.png"
-          },
-          {
-            "Type": "Image",
-            "Name": "BatteryFull",
-            "X": 310,
-            "Y": 45,
-            "Width": 22,
-            "Height": 9,
-            "Visible": false,
-            "RelativeFilename": "BatteryFull.png"
-          },
-          {
-            "Type": "Image",
-            "Name": "BatteryLow",
-            "X": 310,
-            "Y": 45,
-            "Width": 3,
-            "Height": 9,
-            "RelativeFilename": "BatteryLow.png"
-          },
-          {
-            "Type": "Image",
-            "Name": "DotEffect",
-            "X": 201,
-            "Y": 418,
-            "Width": 24,
-            "Height": 24,
-            "RelativeFilename": "DotEffect.png"
-          },
-          {
-            "Type": "Line",
-            "Name": "ShortLine",
-            "X": 240,
-            "Y": 375,
-            "Width": 1,
-            "Height": 28,
+            "Type": "TextArea",
+            "Name": "textArea1",
+            "X": 68,
+            "Y": 163,
+            "Width": 60,
+            "Height": 155,
+            "TextId": "__SingleUse_GT20",
+            "TextRotation": "270",
             "Color": {
-              "Red": 111,
-              "Green": 228,
+              "Red": 255,
+              "Green": 255,
               "Blue": 255
             },
-            "EndY": 28.0,
-            "LineWidth": 2.0,
-            "LineEndingStyle": "Round"
-          },
-          {
-            "Type": "Circle",
-            "Name": "Dot_1",
-            "X": 270,
-            "Y": 427,
-            "Width": 6,
-            "Height": 6,
-            "Color": {
-              "Red": 70,
-              "Green": 90,
-              "Blue": 103
-            },
-            "CenterX": 3.0,
-            "CenterY": 3.0,
-            "Radius": 3.0,
-            "EndAngle": 360.0,
-            "CapPrecision": "Butt"
-          },
-          {
-            "Type": "Circle",
-            "Name": "Dot_2",
-            "X": 250,
-            "Y": 427,
-            "Width": 6,
-            "Height": 6,
-            "Color": {
-              "Red": 70,
-              "Green": 90,
-              "Blue": 103
-            },
-            "CenterX": 3.0,
-            "CenterY": 3.0,
-            "Radius": 3.0,
-            "EndAngle": 360.0,
-            "CapPrecision": "Butt"
-          },
-          {
-            "Type": "Circle",
-            "Name": "Dot_3",
-            "X": 230,
-            "Y": 427,
-            "Width": 6,
-            "Height": 6,
-            "Color": {
-              "Red": 70,
-              "Green": 90,
-              "Blue": 103
-            },
-            "CenterX": 3.0,
-            "CenterY": 3.0,
-            "Radius": 3.0,
-            "EndAngle": 360.0,
-            "CapPrecision": "Butt"
-          },
-          {
-            "Type": "Circle",
-            "Name": "Dot_4",
-            "X": 210,
-            "Y": 427,
-            "Width": 6,
-            "Height": 6,
-            "Color": {
-              "Red": 70,
-              "Green": 90,
-              "Blue": 103
-            },
-            "CenterX": 3.0,
-            "CenterY": 3.0,
-            "Radius": 3.0,
-            "EndAngle": 360.0,
-            "CapPrecision": "Butt"
-          },
-          {
-            "Type": "Image",
-            "Name": "IconMainSelected",
-            "X": 150,
-            "Y": 7,
-            "Width": 182,
-            "Height": 182,
-            "RelativeFilename": "IconMainSelected.png"
-          },
-          {
-            "Type": "Image",
-            "Name": "CalendarIconBig",
-            "X": 225,
-            "Y": 79,
-            "Width": 30,
-            "Height": 32,
-            "RelativeFilename": "CalendarBig.png"
-          },
-          {
-            "Type": "Image",
-            "Name": "IconSideSelected",
-            "X": 193,
-            "Y": 49,
-            "Width": 95,
-            "Height": 99,
-            "RelativeFilename": "IconSideSelected.png"
-          },
-          {
-            "Type": "Image",
-            "Name": "CalendarTextBig",
-            "X": 191,
-            "Y": 132,
-            "Width": 98,
-            "Height": 45,
-            "RelativeFilename": "SelectedBox.png"
+            "AutoSize": true
           }
         ],
         "Interactions": []
@@ -253,7 +102,7 @@
     "LandscapeSkinY": 0,
     "PortraitSkinX": 0,
     "PortraitSkinY": 0,
-    "DisplayOrientation": "Landscape",
+    "DisplayOrientation": "Portrait",
     "Family": "STM32H7",
     "SubFamily": "STM32H743/753",
     "Toolchain": "CMake",

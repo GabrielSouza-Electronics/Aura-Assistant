@@ -1,14 +1,13 @@
 #include "app.h"
 
 #include "app_hand_tracking.h"
-
-#include "audio_sfx.h"
 #include "audio_dsp.h"
 #include "bsp_flash.h"
 #include "bsp_lcd.h"
 #include "bsp_led.h"
 #include "cmsis_os2.h"
 #include "ltdc.h"
+#include "welcome_audio.h"
 
 #include <string.h>
 
@@ -25,6 +24,18 @@
 #define APP_AUDIO_RECORD_SECONDS   5U
 #define APP_AUDIO_RECORD_SAMPLES \
     (APP_AUDIO_RECORD_RATE_HZ * APP_AUDIO_RECORD_SECONDS)
+#define APP_LED_PALETTE_STEPS      768U
+#define APP_LED_FRAME_DELAY_MS     35U
+#define APP_LED_MIN_INTENSITY      48U
+#define APP_LED_ROTATION_STEP      9U
+#define APP_LED_BREATH_STEP        2U
+
+typedef struct
+{
+    uint8_t red;
+    uint8_t green;
+    uint8_t blue;
+} APP_LED_Color_t;
 
 extern uint8_t __touchgfx_framebuffer_start__;
 extern uint8_t __touchgfx_framebuffer_end__;
@@ -46,14 +57,14 @@ volatile APP_TOFDiagnostics_t app_tof_diagnostics = {
     .magic = 0x544F4644U /* "TOFD" */
 };
 volatile APP_AudioOutDiagnostics_t app_audio_out_diagnostics = {
-    .magic = 0x4155444FU, /* "AUDO" */
-    .current_effect = AUDIO_SFX_COUNT,
-    .requested_effect = AUDIO_SFX_COUNT
+    .magic = 0x4155444FU /* "AUDO" */
 };
 volatile APP_AudioEchoDiagnostics_t app_audio_echo_diagnostics = {
     .magic = 0x4543484FU /* "ECHO" */
 };
 static osThreadId_t app_audio_output_thread;
+static volatile bool app_system_ready;
+static volatile bool app_welcome_active;
 #if APP_AUDIO_ECHO_TEST
 static osThreadId_t app_audio_input_thread;
 #endif
@@ -106,6 +117,7 @@ static void APP_AudioInputSignal(void)
                                APP_AUDIO_INPUT_READY_FLAG);
     }
 }
+#endif
 
 void APP_DisplayDiagnosticsPoll(void)
 {
@@ -145,7 +157,6 @@ void HAL_LTDC_ErrorCallback(LTDC_HandleTypeDef *handle)
     app_display_diagnostics.ltdc_last_error = handle->ErrorCode;
 }
 
-#if !APP_LED_WHITE_DIAGNOSTIC
 static bool APP_FLASH_ValidateMappedContent(void)
 {
     const volatile uint8_t *start =
@@ -207,82 +218,9 @@ static bool APP_LCD_ClearFramebuffer(void)
 
     return true;
 }
-#endif
-#endif
 
 void APP_Init(void)
 {
-#if APP_LED_GPIO_DIAGNOSTIC
-    GPIO_InitTypeDef gpio = {0};
-
-    /* The normal generated configuration selects AF1/TIM1_CH2. Override only
-       for this isolated board-level signal-integrity test. */
-    HAL_GPIO_WritePin(DATA_LED_GPIO_Port, DATA_LED_Pin, GPIO_PIN_RESET);
-    gpio.Pin = DATA_LED_Pin;
-    gpio.Mode = GPIO_MODE_OUTPUT_PP;
-    gpio.Pull = GPIO_NOPULL;
-    gpio.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
-    HAL_GPIO_Init(DATA_LED_GPIO_Port, &gpio);
-
-    __set_BASEPRI(0U);
-    __DSB();
-    __ISB();
-    app_init_status = APP_INIT_OK;
-
-    for (;;)
-    {
-        HAL_GPIO_WritePin(DATA_LED_GPIO_Port, DATA_LED_Pin, GPIO_PIN_SET);
-        HAL_Delay(500U);
-        HAL_GPIO_WritePin(DATA_LED_GPIO_Port, DATA_LED_Pin, GPIO_PIN_RESET);
-        HAL_Delay(500U);
-    }
-#elif APP_LED_WHITE_DIAGNOSTIC
-    /* TouchGFX creates CMSIS-RTOS objects before the scheduler starts. The
-       FreeRTOS Cortex-M port intentionally leaves BASEPRI at
-       configMAX_SYSCALL_INTERRUPT_PRIORITY during this pre-scheduler phase.
-       This isolated test never starts the scheduler, so release that mask to
-       allow the TIM1 DMA completion IRQ to run. */
-    __set_BASEPRI(0U);
-    __DSB();
-    __ISB();
-
-    app_init_status = APP_INIT_LED_BSP_ERROR;
-    app_led_status = BSP_LED_Init();
-    if (app_led_status != BSP_LED_OK)
-    {
-        for (;;)
-        {
-            __WFI();
-        }
-    }
-
-    app_init_status = APP_INIT_LED_FILL_ERROR;
-    /* Reproduce the original known-good REV01 bring-up pattern exactly. */
-    app_led_status = BSP_LED_Fill(255U, 0U, 0U);
-    if (app_led_status != BSP_LED_OK)
-    {
-        for (;;)
-        {
-            __WFI();
-        }
-    }
-
-    app_init_status = APP_INIT_OK;
-    for (;;)
-    {
-        app_led_status = BSP_LED_ShowBlocking(100U);
-        if (app_led_status != BSP_LED_OK)
-        {
-            app_init_status = APP_INIT_LED_TRANSFER_ERROR;
-            for (;;)
-            {
-                __WFI();
-            }
-        }
-
-        HAL_Delay(100U);
-    }
-#else
     BSP_FLASH_Status_t flash_status;
     BSP_LCD_Status_t lcd_status;
 
@@ -301,10 +239,7 @@ void APP_Init(void)
     }
 
     app_init_status = APP_INIT_FLASH_CONTENT_ERROR;
-    if (!APP_FLASH_ValidateMappedContent())
-    {
-        return;
-    }
+    (void)APP_FLASH_ValidateMappedContent();
 
     app_init_status = APP_INIT_LCD_BSP_ERROR;
     lcd_status = BSP_LCD_Init();
@@ -334,8 +269,8 @@ void APP_Init(void)
     }
 
     app_init_status = APP_INIT_OK;
+    app_system_ready = true;
     APP_DisplayDiagnosticsPoll();
-#endif
 }
 
 APP_InitStatus_t APP_GetInitStatus(void)
@@ -343,15 +278,95 @@ APP_InitStatus_t APP_GetInitStatus(void)
     return app_init_status;
 }
 
-void APP_LEDTask(void)
+static uint8_t APP_LED_Interpolate(uint8_t start,
+                                   uint8_t end,
+                                   uint16_t blend)
 {
-    /* LED bring-up is intentionally paused during power-board validation. */
-    for (;;)
-    {
-        osDelay(1000U);
-    }
+    return (uint8_t)((((uint32_t)start * (255U - blend)) +
+                      ((uint32_t)end * blend) + 127U) / 255U);
 }
 
+static APP_LED_Color_t APP_LED_GetStartupColor(uint16_t blend)
+{
+    return (APP_LED_Color_t){
+        APP_LED_Interpolate(255U, 0U, blend),
+        0U,
+        APP_LED_Interpolate(0U, 255U, blend)
+    };
+}
+
+void APP_LEDTask(void)
+{
+    uint16_t rotation = 0U;
+    uint8_t breath_phase = 0U;
+    uint32_t startup_start_tick = 0U;
+
+    app_led_status = BSP_LED_Init();
+    for (;;)
+    {
+        if (app_led_status == BSP_LED_OK)
+        {
+            const uint16_t triangle = (breath_phase < 128U) ?
+                ((uint16_t)breath_phase * 2U) :
+                ((uint16_t)(255U - breath_phase) * 2U);
+            const uint8_t breathing_intensity = (uint8_t)(
+                APP_LED_MIN_INTENSITY +
+                ((triangle * (255U - APP_LED_MIN_INTENSITY)) / 255U));
+            APP_LED_Color_t startup_color = {0U, 255U, 0U};
+
+            if (!app_system_ready)
+            {
+                if (startup_start_tick == 0U)
+                {
+                    startup_start_tick = osKernelGetTickCount();
+                }
+                const uint32_t elapsed =
+                    osKernelGetTickCount() - startup_start_tick;
+                const uint16_t blend = (elapsed >= 4000U)
+                    ? 255U
+                    : (uint16_t)((elapsed * 255U) / 4000U);
+                startup_color = APP_LED_GetStartupColor(blend);
+            }
+
+            for (size_t index = 0U; index < BSP_LED_COUNT; ++index)
+            {
+                uint8_t intensity = breathing_intensity;
+                if (!app_system_ready)
+                {
+                    const uint8_t wave_phase = (uint8_t)(
+                        breath_phase + (rotation / 3U) +
+                        ((index * 256U) / BSP_LED_COUNT));
+                    const uint16_t wave = (wave_phase < 128U)
+                        ? ((uint16_t)wave_phase * 2U)
+                        : ((uint16_t)(255U - wave_phase) * 2U);
+                    intensity = (uint8_t)(APP_LED_MIN_INTENSITY +
+                        ((wave * (255U - APP_LED_MIN_INTENSITY)) / 255U));
+                }
+
+                const APP_LED_Color_t color = app_system_ready
+                    ? (APP_LED_Color_t){0U, 255U, 255U}
+                    : startup_color;
+                app_led_status = BSP_LED_SetPixelWithIntensity(
+                    index, color.red, color.green, color.blue, intensity);
+                if (app_led_status != BSP_LED_OK)
+                {
+                    break;
+                }
+            }
+
+            if (app_led_status == BSP_LED_OK)
+            {
+                app_led_status = BSP_LED_ShowBlocking(10U);
+            }
+
+            rotation = (uint16_t)((rotation + APP_LED_ROTATION_STEP) %
+                                  APP_LED_PALETTE_STEPS);
+            breath_phase = (uint8_t)(breath_phase + APP_LED_BREATH_STEP);
+        }
+
+        osDelay(APP_LED_FRAME_DELAY_MS);
+    }
+}
 void APP_PowerTask(void)
 {
     BSP_POWER_Data_t data = {0};
@@ -399,22 +414,7 @@ void APP_SensorTask(void)
     {
         ++app_imu_diagnostics.error_count;
     }
-    else
-    {
-        app_imu_diagnostics.read_status = BSP_IMU_Read(&imu_data);
-        if (app_imu_diagnostics.read_status == BSP_IMU_OK)
-        {
-            app_imu_diagnostics.data = imu_data;
-            ++app_imu_diagnostics.update_count;
-        }
-        else
-        {
-            ++app_imu_diagnostics.error_count;
-        }
-    }
 
-    app_tof_diagnostics.init_status = BSP_TOF_ERROR_INITIALIZATION;
-    app_tof_diagnostics.read_status = BSP_TOF_ERROR_NOT_INITIALIZED;
     app_tof_diagnostics.init_status = BSP_TOF_Init();
     app_tof_diagnostics.read_status = app_tof_diagnostics.init_status;
     if (app_tof_diagnostics.init_status != BSP_TOF_OK)
@@ -462,36 +462,6 @@ void APP_SensorTask(void)
         osDelay(20U);
     }
 }
-
-static void APP_AudioPlayBlocking(AUDIO_SFX_Id_t effect)
-{
-    app_audio_out_diagnostics.current_effect = effect;
-    app_audio_out_diagnostics.busy = true;
-    app_audio_out_diagnostics.last_status =
-        BSP_AUDIO_OUT_PlayEffectBlocking(effect, 2000U);
-    app_audio_out_diagnostics.busy = false;
-    app_audio_out_diagnostics.last_hal_error =
-        BSP_AUDIO_OUT_GetLastHALerror();
-
-    if (app_audio_out_diagnostics.last_status == BSP_AUDIO_OUT_OK)
-    {
-        ++app_audio_out_diagnostics.play_count;
-    }
-    else
-    {
-        ++app_audio_out_diagnostics.error_count;
-    }
-    app_audio_out_diagnostics.current_effect = AUDIO_SFX_COUNT;
-}
-
-void APP_AudioPlayEffect(AUDIO_SFX_Id_t effect)
-{
-    if (effect < AUDIO_SFX_COUNT)
-    {
-        app_audio_out_diagnostics.requested_effect = effect;
-    }
-}
-
 void APP_AudioOutputTask(void)
 {
 #if APP_AUDIO_ECHO_TEST
@@ -508,34 +478,39 @@ void APP_AudioOutputTask(void)
     app_audio_out_diagnostics.init_status = BSP_AUDIO_OUT_Init();
     app_audio_out_diagnostics.last_status =
         app_audio_out_diagnostics.init_status;
-
     if (app_audio_out_diagnostics.init_status != BSP_AUDIO_OUT_OK)
     {
         ++app_audio_out_diagnostics.error_count;
     }
     else
     {
-        /* Initial speaker bring-up sequence. */
-        osDelay(1200U);
-        APP_AudioPlayBlocking(AUDIO_SFX_WAKE);
-        osDelay(250U);
-        APP_AudioPlayBlocking(AUDIO_SFX_MENU_CHANGE);
-        osDelay(250U);
-        APP_AudioPlayBlocking(AUDIO_SFX_CONFIRM);
-        osDelay(250U);
-        APP_AudioPlayBlocking(AUDIO_SFX_SLEEP);
-    }
+        while (!app_system_ready)
+        {
+            osDelay(10U);
+        }
 
+        BSP_AUDIO_OUT_SetVolume(5U);
+        app_welcome_active = true;
+        app_audio_out_diagnostics.busy = true;
+        app_audio_out_diagnostics.last_status =
+            BSP_AUDIO_OUT_PlayPCM48kMonoBlocking(
+                welcome_audio_pcm, welcome_audio_pcm_count, 3000U);
+        app_audio_out_diagnostics.busy = false;
+        app_welcome_active = false;
+        app_audio_out_diagnostics.last_hal_error =
+            BSP_AUDIO_OUT_GetLastHALerror();
+        if (app_audio_out_diagnostics.last_status == BSP_AUDIO_OUT_OK)
+        {
+            ++app_audio_out_diagnostics.play_count;
+        }
+        else
+        {
+            ++app_audio_out_diagnostics.error_count;
+        }
+    }
     for (;;)
     {
-        const AUDIO_SFX_Id_t requested =
-            app_audio_out_diagnostics.requested_effect;
-        if (requested < AUDIO_SFX_COUNT)
-        {
-            app_audio_out_diagnostics.requested_effect = AUDIO_SFX_COUNT;
-            APP_AudioPlayBlocking(requested);
-        }
-        osDelay(10U);
+        osDelay(1000U);
     }
 #endif
 }
@@ -766,7 +741,10 @@ void APP_SystemTask(void)
     static uint8_t menu_option = 0U;
     static uint8_t last_menu_option = 0U;
     static int8_t last_x = 0;
-static int8_t last_y = 0;
+    static int8_t last_y = 0;
+
+    APP_Init();
+
     for (;;)
     {
         if(app_hand_tracking.hand_active==true) // Check if the hand is active
@@ -812,7 +790,6 @@ static int8_t last_y = 0;
                             
                 if(last_menu_option != menu_option)
                 {
-                    APP_AudioPlayBlocking(AUDIO_SFX_OPTION_CHANGE);
                     last_menu_option = menu_option;
                 }            
                 last_x = app_hand_tracking.x;

@@ -5,8 +5,6 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "audio_sfx.h"
-
 typedef enum
 {
     BSP_AUDIO_OUT_OK = 0,
@@ -22,14 +20,18 @@ typedef void (*BSP_AUDIO_OUT_PrepareWait_t)(void);
 typedef bool (*BSP_AUDIO_OUT_Wait_t)(uint32_t timeout_ms);
 typedef void (*BSP_AUDIO_OUT_Signal_t)(void);
 
+#define BSP_AUDIO_OUT_MAX_VOLUME 10U
+
 BSP_AUDIO_OUT_Status_t BSP_AUDIO_OUT_Init(void);
+void BSP_AUDIO_OUT_SetVolume(uint8_t volume);
+uint8_t BSP_AUDIO_OUT_GetVolume(void);
 void BSP_AUDIO_OUT_SetSynchronizationHooks(BSP_AUDIO_OUT_PrepareWait_t prepare_wait,
                                            BSP_AUDIO_OUT_Wait_t wait,
                                            BSP_AUDIO_OUT_Signal_t signal);
-BSP_AUDIO_OUT_Status_t BSP_AUDIO_OUT_PlayEffectBlocking(AUDIO_SFX_Id_t effect,
-                                                        uint32_t timeout_ms);
 BSP_AUDIO_OUT_Status_t BSP_AUDIO_OUT_PlayPCM16kStereoBlocking(
     const int16_t *pcm_stereo, size_t frame_count, uint32_t timeout_ms);
+BSP_AUDIO_OUT_Status_t BSP_AUDIO_OUT_PlayPCM48kMonoBlocking(
+    const int16_t *pcm_mono, size_t sample_count, uint32_t timeout_ms);
 BSP_AUDIO_OUT_Status_t BSP_AUDIO_OUT_StartEchoStream(void);
 BSP_AUDIO_OUT_Status_t BSP_AUDIO_OUT_QueueEchoBlock(
     const int16_t *pcm_stereo, size_t frame_count);

@@ -28,32 +28,18 @@ set(TouchGFX_Src
     ${CMAKE_SOURCE_DIR}/TouchGFX/generated/fonts/src/CompressedFontCache.cpp
     ${CMAKE_SOURCE_DIR}/TouchGFX/generated/fonts/src/CompressedUnmappedFontCache.cpp
     ${CMAKE_SOURCE_DIR}/TouchGFX/generated/fonts/src/FontCache.cpp
-    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/fonts/src/Font_verdana_10_4bpp_0.cpp
-    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/fonts/src/Font_verdana_20_4bpp_0.cpp
-    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/fonts/src/Font_verdana_40_4bpp_0.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/fonts/src/Font_Orbitron_Bold_60_4bpp_0.cpp
     ${CMAKE_SOURCE_DIR}/TouchGFX/generated/fonts/src/GeneratedFont.cpp
-    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/fonts/src/Kerning_verdana_10_4bpp.cpp
-    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/fonts/src/Kerning_verdana_20_4bpp.cpp
-    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/fonts/src/Kerning_verdana_40_4bpp.cpp
-    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/fonts/src/Table_verdana_10_4bpp.cpp
-    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/fonts/src/Table_verdana_20_4bpp.cpp
-    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/fonts/src/Table_verdana_40_4bpp.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/fonts/src/Kerning_Orbitron_Bold_60_4bpp.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/fonts/src/Table_Orbitron_Bold_60_4bpp.cpp
     ${CMAKE_SOURCE_DIR}/TouchGFX/generated/fonts/src/UnmappedDataFont.cpp
     ${CMAKE_SOURCE_DIR}/TouchGFX/generated/fonts/src/VectorFontRendererBuffers.cpp
     ${CMAKE_SOURCE_DIR}/TouchGFX/generated/gui_generated/src/common/FrontendApplicationBase.cpp
     ${CMAKE_SOURCE_DIR}/TouchGFX/generated/gui_generated/src/screen1_screen/Screen1ViewBase.cpp
     ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/BitmapDatabase.cpp
     ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/SVGDatabase.cpp
-    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/image_Battery50.cpp
-    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/image_BatteryFrame.cpp
-    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/image_BatteryFull.cpp
-    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/image_BatteryLow.cpp
-    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/image_CalendarBig.cpp
-    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/image_DotEffect.cpp
-    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/image_IconMainSelected.cpp
-    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/image_IconSideSelected.cpp
-    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/image_Ring_Effect.cpp
-    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/image_SelectedBox.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/image_circ_carousel.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/image_circ_standby.cpp
     ${CMAKE_SOURCE_DIR}/TouchGFX/generated/texts/src/LanguageGb.cpp
     ${CMAKE_SOURCE_DIR}/TouchGFX/generated/texts/src/Texts.cpp
     ${CMAKE_SOURCE_DIR}/TouchGFX/generated/texts/src/TypedTextDatabase.cpp

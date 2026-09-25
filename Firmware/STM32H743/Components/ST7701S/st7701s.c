@@ -312,8 +312,7 @@ static const uint8_t gate_control_ef[] = {
     0x08U, 0x08U, 0x08U, 0x45U, 0x3FU, 0x54U
 };
 static const uint8_t page_00[] = {0x77U, 0x01U, 0x00U, 0x00U, 0x00U};
-/* Validated stable RGB-mode setting: ML and BGR enabled. MADCTL.MY was
-   tested separately and had no visible effect on this panel. */
+/* Validated stable RGB-mode setting from the DWIN panel profile. */
 static const uint8_t address_mode[] = {0x18U};
 static const uint8_t pixel_format[] = {ST7701S_PIXEL_FORMAT_RGB888};
 static const uint8_t tearing_effect[] = {0x00U};

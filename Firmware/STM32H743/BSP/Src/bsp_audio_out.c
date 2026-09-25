@@ -3,9 +3,11 @@
 #include "i2s.h"
 #include "main.h"
 
+#define BSP_AUDIO_OUT_SAMPLE_RATE_HZ 48000U
 #define BSP_AUDIO_OUT_MAX_DURATION_MS 500U
+#define BSP_AUDIO_OUT_PCM_FADE_SAMPLES 960U
 #define BSP_AUDIO_OUT_STEREO_SAMPLES \
-    ((AUDIO_SFX_SAMPLE_RATE_HZ * BSP_AUDIO_OUT_MAX_DURATION_MS * 2U) / 1000U)
+    ((BSP_AUDIO_OUT_SAMPLE_RATE_HZ * BSP_AUDIO_OUT_MAX_DURATION_MS * 2U) / 1000U)
 #define BSP_AUDIO_OUT_ECHO_INPUT_FRAMES 128U
 #define BSP_AUDIO_OUT_ECHO_HALF_SAMPLES \
     (BSP_AUDIO_OUT_ECHO_INPUT_FRAMES * 3U * 2U)
@@ -20,11 +22,82 @@ static volatile bool bsp_audio_out_dma_error;
 static volatile bool bsp_audio_out_keep_enabled;
 static volatile uint32_t bsp_audio_out_last_hal_error;
 static volatile bool bsp_audio_out_echo_stream;
+static volatile bool bsp_audio_out_pcm_stream;
+static volatile uint8_t bsp_audio_out_pcm_end_half;
+static volatile uint8_t bsp_audio_out_volume = 5U;
+static const int16_t *bsp_audio_out_pcm_source;
+static size_t bsp_audio_out_pcm_sample_count;
+static size_t bsp_audio_out_pcm_offset;
 static volatile uint8_t bsp_audio_out_echo_writable;
 static volatile uint32_t bsp_audio_out_echo_underruns;
 static BSP_AUDIO_OUT_PrepareWait_t bsp_audio_out_prepare_wait;
 static BSP_AUDIO_OUT_Wait_t bsp_audio_out_wait;
 static BSP_AUDIO_OUT_Signal_t bsp_audio_out_signal;
+
+void BSP_AUDIO_OUT_SetVolume(uint8_t volume)
+{
+    bsp_audio_out_volume = (volume > BSP_AUDIO_OUT_MAX_VOLUME)
+                               ? BSP_AUDIO_OUT_MAX_VOLUME
+                               : volume;
+}
+
+uint8_t BSP_AUDIO_OUT_GetVolume(void)
+{
+    return bsp_audio_out_volume;
+}
+
+static void BSP_AUDIO_OUT_FillPCM48kMonoHalf(size_t half)
+{
+    const size_t half_samples = BSP_AUDIO_OUT_STEREO_SAMPLES / 2U;
+    const size_t half_mono_samples = half_samples / 2U;
+    const size_t output_offset = half * half_samples;
+     const size_t fade_start = (bsp_audio_out_pcm_sample_count >
+                                         BSP_AUDIO_OUT_PCM_FADE_SAMPLES)
+                                             ? (bsp_audio_out_pcm_sample_count -
+                                                 BSP_AUDIO_OUT_PCM_FADE_SAMPLES)
+                                             : 0U;
+    size_t remaining = bsp_audio_out_pcm_sample_count -
+                       bsp_audio_out_pcm_offset;
+    const size_t sample_count = (remaining < half_mono_samples)
+                                    ? remaining
+                                    : half_mono_samples;
+
+    for (size_t index = 0U; index < sample_count; ++index)
+    {
+        const size_t source_index = bsp_audio_out_pcm_offset + index;
+        int32_t sample;
+
+        sample = ((int32_t)bsp_audio_out_pcm_source[source_index] *
+              (int32_t)bsp_audio_out_volume) /
+             (int32_t)BSP_AUDIO_OUT_MAX_VOLUME;
+        if (source_index >= fade_start)
+        {
+            const size_t fade_length = bsp_audio_out_pcm_sample_count -
+                                       fade_start;
+            const size_t remaining = bsp_audio_out_pcm_sample_count -
+                                     source_index;
+            sample = (sample * (int32_t)remaining) /
+                     (int32_t)fade_length;
+        }
+
+        bsp_audio_out_dma_buffer[output_offset + (2U * index)] = (int16_t)sample;
+        bsp_audio_out_dma_buffer[output_offset + (2U * index) + 1U] = (int16_t)sample;
+    }
+    for (size_t index = sample_count; index < half_mono_samples; ++index)
+    {
+        bsp_audio_out_dma_buffer[output_offset + (2U * index)] = 0;
+        bsp_audio_out_dma_buffer[output_offset + (2U * index) + 1U] = 0;
+    }
+
+    bsp_audio_out_pcm_offset += sample_count;
+    if (bsp_audio_out_pcm_offset >= bsp_audio_out_pcm_sample_count)
+    {
+        bsp_audio_out_pcm_end_half = (uint8_t)half;
+    }
+    SCB_CleanDCache_by_Addr(
+        (uint32_t *)&bsp_audio_out_dma_buffer[output_offset],
+        (int32_t)(half_samples * sizeof(int16_t)));
+}
 
 static BSP_AUDIO_OUT_Status_t BSP_AUDIO_OUT_TransmitBuffer(size_t sample_count,
                                                            uint32_t timeout_ms,
@@ -102,11 +175,14 @@ void BSP_AUDIO_OUT_SetSynchronizationHooks(BSP_AUDIO_OUT_PrepareWait_t prepare_w
 
 BSP_AUDIO_OUT_Status_t BSP_AUDIO_OUT_Init(void)
 {
+    BSP_AUDIO_OUT_SetVolume(5U);
     bsp_audio_out_busy = false;
     bsp_audio_out_dma_error = false;
     bsp_audio_out_keep_enabled = false;
     bsp_audio_out_last_hal_error = HAL_I2S_ERROR_NONE;
     bsp_audio_out_echo_stream = false;
+    bsp_audio_out_pcm_stream = false;
+    bsp_audio_out_pcm_end_half = 0xFFU;
     bsp_audio_out_echo_writable = 0U;
     bsp_audio_out_echo_underruns = 0U;
     HAL_GPIO_WritePin(I2S_SDMODE_GPIO_Port, I2S_SDMODE_Pin, GPIO_PIN_RESET);
@@ -122,6 +198,8 @@ static void BSP_AUDIO_OUT_RenderEchoHalf(size_t half,
     {
         int32_t monitor =
             (int32_t)pcm_stereo[2U * frame] * BSP_AUDIO_OUT_ECHO_GAIN;
+        monitor = (monitor * (int32_t)bsp_audio_out_volume) /
+                  (int32_t)BSP_AUDIO_OUT_MAX_VOLUME;
         if (monitor > INT16_MAX)
         {
             monitor = INT16_MAX;
@@ -243,12 +321,12 @@ uint32_t BSP_AUDIO_OUT_GetEchoUnderrunCount(void)
     return bsp_audio_out_echo_underruns;
 }
 
-BSP_AUDIO_OUT_Status_t BSP_AUDIO_OUT_PlayEffectBlocking(AUDIO_SFX_Id_t effect,
-                                                        uint32_t timeout_ms)
+BSP_AUDIO_OUT_Status_t BSP_AUDIO_OUT_PlayPCM48kMonoBlocking(
+    const int16_t *pcm_mono, size_t sample_count, uint32_t timeout_ms)
 {
-    size_t sample_count;
+    const uint32_t start_tick = HAL_GetTick();
 
-    if (effect >= AUDIO_SFX_COUNT)
+    if ((pcm_mono == NULL) || (sample_count == 0U))
     {
         return BSP_AUDIO_OUT_ERROR_INVALID_ARGUMENT;
     }
@@ -256,52 +334,77 @@ BSP_AUDIO_OUT_Status_t BSP_AUDIO_OUT_PlayEffectBlocking(AUDIO_SFX_Id_t effect,
     {
         return BSP_AUDIO_OUT_ERROR_BUSY;
     }
-    if (effect == AUDIO_SFX_WAKE)
+
+    bsp_audio_out_pcm_source = pcm_mono;
+    bsp_audio_out_pcm_sample_count = sample_count;
+    bsp_audio_out_pcm_offset = 0U;
+    bsp_audio_out_pcm_end_half = 0xFFU;
+    bsp_audio_out_pcm_stream = true;
+    bsp_audio_out_busy = true;
+    bsp_audio_out_dma_error = false;
+    bsp_audio_out_keep_enabled = true;
+    bsp_audio_out_last_hal_error = HAL_I2S_ERROR_NONE;
+    BSP_AUDIO_OUT_FillPCM48kMonoHalf(0U);
+    BSP_AUDIO_OUT_FillPCM48kMonoHalf(1U);
+
+    (void)HAL_DMA_DeInit(hi2s1.hdmatx);
+    hi2s1.hdmatx->Init.Mode = DMA_CIRCULAR;
+    if (HAL_DMA_Init(hi2s1.hdmatx) != HAL_OK)
     {
-        const int16_t *voice_pcm = AUDIO_SFX_GetStartupVoice(&sample_count);
-        size_t input_offset = 0U;
+        bsp_audio_out_pcm_stream = false;
+        bsp_audio_out_busy = false;
+        bsp_audio_out_last_hal_error = hi2s1.ErrorCode;
+        return BSP_AUDIO_OUT_ERROR_DMA_START;
+    }
 
-        while (input_offset < sample_count)
+    HAL_GPIO_WritePin(I2S_SDMODE_GPIO_Port, I2S_SDMODE_Pin, GPIO_PIN_SET);
+    for (volatile uint32_t delay = 0U; delay < 10000U; ++delay)
+    {
+        __NOP();
+    }
+    if (HAL_I2S_Transmit_DMA(&hi2s1,
+                             (uint16_t *)(void *)bsp_audio_out_dma_buffer,
+                             (uint16_t)BSP_AUDIO_OUT_STEREO_SAMPLES) != HAL_OK)
+    {
+        bsp_audio_out_pcm_stream = false;
+        bsp_audio_out_busy = false;
+        bsp_audio_out_last_hal_error = hi2s1.ErrorCode;
+        HAL_GPIO_WritePin(I2S_SDMODE_GPIO_Port, I2S_SDMODE_Pin, GPIO_PIN_RESET);
+        return BSP_AUDIO_OUT_ERROR_DMA_START;
+    }
+
+    while (bsp_audio_out_busy)
+    {
+        if ((HAL_GetTick() - start_tick) >= timeout_ms)
         {
-            const size_t remaining = sample_count - input_offset;
-            const size_t input_chunk =
-                (remaining > (BSP_AUDIO_OUT_STEREO_SAMPLES / 6U))
-                    ? (BSP_AUDIO_OUT_STEREO_SAMPLES / 6U)
-                    : remaining;
-            size_t output_index = 0U;
-
-            for (size_t input_index = 0U; input_index < input_chunk; ++input_index)
+            (void)HAL_I2S_DMAStop(&hi2s1);
+            bsp_audio_out_pcm_stream = false;
+            bsp_audio_out_busy = false;
+            HAL_GPIO_WritePin(I2S_SDMODE_GPIO_Port, I2S_SDMODE_Pin, GPIO_PIN_RESET);
+            return BSP_AUDIO_OUT_ERROR_TIMEOUT;
+        }
+        if (bsp_audio_out_wait != NULL)
+        {
+            const uint32_t elapsed = HAL_GetTick() - start_tick;
+            const uint32_t remaining = timeout_ms - elapsed;
+            if (!bsp_audio_out_wait(remaining) && bsp_audio_out_busy)
             {
-                /* Conservative -6 dB level for first validation on the 3 W amp. */
-                const int16_t sample =
-                    (int16_t)(voice_pcm[input_offset + input_index] / 2);
-                for (uint32_t repeat = 0U; repeat < 3U; ++repeat)
-                {
-                    bsp_audio_out_dma_buffer[output_index++] = sample;
-                    bsp_audio_out_dma_buffer[output_index++] = sample;
-                }
-            }
-
-            input_offset += input_chunk;
-            {
-                const BSP_AUDIO_OUT_Status_t status = BSP_AUDIO_OUT_TransmitBuffer(
-                    output_index, timeout_ms, input_offset < sample_count);
-                if (status != BSP_AUDIO_OUT_OK)
-                {
-                    return status;
-                }
+                (void)HAL_I2S_DMAStop(&hi2s1);
+                bsp_audio_out_pcm_stream = false;
+                bsp_audio_out_busy = false;
+                HAL_GPIO_WritePin(I2S_SDMODE_GPIO_Port,
+                                  I2S_SDMODE_Pin, GPIO_PIN_RESET);
+                return BSP_AUDIO_OUT_ERROR_TIMEOUT;
             }
         }
-        return BSP_AUDIO_OUT_OK;
+        else
+        {
+            HAL_Delay(1U);
+        }
     }
 
-    sample_count = AUDIO_SFX_RenderStereo(
-        effect, bsp_audio_out_dma_buffer, BSP_AUDIO_OUT_STEREO_SAMPLES);
-    if ((sample_count == 0U) || (sample_count > UINT16_MAX))
-    {
-        return BSP_AUDIO_OUT_ERROR_RENDER;
-    }
-    return BSP_AUDIO_OUT_TransmitBuffer(sample_count, timeout_ms, false);
+    return bsp_audio_out_dma_error ? BSP_AUDIO_OUT_ERROR_DMA
+                                   : BSP_AUDIO_OUT_OK;
 }
 
 BSP_AUDIO_OUT_Status_t BSP_AUDIO_OUT_PlayPCM16kStereoBlocking(
@@ -346,6 +449,26 @@ uint32_t BSP_AUDIO_OUT_GetLastHALerror(void)
 
 void BSP_AUDIO_OUT_TransferCompleteCallback(void)
 {
+    if (bsp_audio_out_pcm_stream)
+    {
+        if (bsp_audio_out_pcm_end_half == 1U)
+        {
+            (void)HAL_I2S_DMAStop(&hi2s1);
+            bsp_audio_out_pcm_stream = false;
+            bsp_audio_out_busy = false;
+            HAL_GPIO_WritePin(I2S_SDMODE_GPIO_Port,
+                              I2S_SDMODE_Pin, GPIO_PIN_RESET);
+        }
+        else
+        {
+            BSP_AUDIO_OUT_FillPCM48kMonoHalf(1U);
+        }
+        if (bsp_audio_out_signal != NULL)
+        {
+            bsp_audio_out_signal();
+        }
+        return;
+    }
     if (bsp_audio_out_echo_stream)
     {
         if ((bsp_audio_out_echo_writable & 0x02U) != 0U)
@@ -373,6 +496,28 @@ void BSP_AUDIO_OUT_TransferCompleteCallback(void)
 
 void BSP_AUDIO_OUT_HalfTransferCallback(void)
 {
+    if (bsp_audio_out_pcm_stream)
+    {
+        if (bsp_audio_out_pcm_end_half == 0U)
+        {
+            (void)HAL_I2S_DMAStop(&hi2s1);
+            bsp_audio_out_pcm_stream = false;
+            bsp_audio_out_busy = false;
+            HAL_GPIO_WritePin(I2S_SDMODE_GPIO_Port,
+                              I2S_SDMODE_Pin, GPIO_PIN_RESET);
+            if (bsp_audio_out_signal != NULL)
+            {
+                bsp_audio_out_signal();
+            }
+            return;
+        }
+        BSP_AUDIO_OUT_FillPCM48kMonoHalf(0U);
+        if (bsp_audio_out_signal != NULL)
+        {
+            bsp_audio_out_signal();
+        }
+        return;
+    }
     if (bsp_audio_out_echo_stream)
     {
         if ((bsp_audio_out_echo_writable & 0x01U) != 0U)

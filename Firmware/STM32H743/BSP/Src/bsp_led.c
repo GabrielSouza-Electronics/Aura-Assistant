@@ -94,6 +94,22 @@ BSP_LED_Status_t BSP_LED_SetPixel(size_t index,
                         (WS2812C_Color_t){red, green, blue}));
 }
 
+BSP_LED_Status_t BSP_LED_SetPixelWithIntensity(size_t index,
+                                              uint8_t red,
+                                              uint8_t green,
+                                              uint8_t blue,
+                                              uint8_t intensity)
+{
+    const uint8_t scaled_red =
+        (uint8_t)(((uint16_t)red * intensity + 127U) / 255U);
+    const uint8_t scaled_green =
+        (uint8_t)(((uint16_t)green * intensity + 127U) / 255U);
+    const uint8_t scaled_blue =
+        (uint8_t)(((uint16_t)blue * intensity + 127U) / 255U);
+
+    return BSP_LED_SetPixel(index, scaled_red, scaled_green, scaled_blue);
+}
+
 BSP_LED_Status_t BSP_LED_Fill(uint8_t red, uint8_t green, uint8_t blue)
 {
     if (!led_initialized)

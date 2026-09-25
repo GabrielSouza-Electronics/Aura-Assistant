@@ -42,6 +42,11 @@ BSP_LED_Status_t BSP_LED_SetPixel(size_t index,
                                  uint8_t red,
                                  uint8_t green,
                                  uint8_t blue);
+BSP_LED_Status_t BSP_LED_SetPixelWithIntensity(size_t index,
+                                              uint8_t red,
+                                              uint8_t green,
+                                              uint8_t blue,
+                                              uint8_t intensity);
 BSP_LED_Status_t BSP_LED_Fill(uint8_t red, uint8_t green, uint8_t blue);
 BSP_LED_Status_t BSP_LED_Show(void);
 BSP_LED_Status_t BSP_LED_ShowBlocking(uint32_t timeout_ms);

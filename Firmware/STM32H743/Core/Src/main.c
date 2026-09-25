@@ -52,7 +52,6 @@
 
 /* USER CODE END PD */
 
-/* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
 
 /* USER CODE END PM */
@@ -99,7 +98,7 @@ int main(void)
 
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
   HAL_Init();
- 
+  
   /* USER CODE BEGIN Init */
 
   /* USER CODE END Init */
@@ -131,9 +130,7 @@ int main(void)
   MX_ADC1_Init();
   MX_TouchGFX_Init();
   /* Call PreOsInit function */
-  MX_TouchGFX_PreOSInit();
   /* USER CODE BEGIN 2 */
-  APP_Init();
   /* USER CODE END 2 */
 
   /* Init scheduler */
@@ -160,7 +157,7 @@ int main(void)
   * @brief System Clock Configuration
   * @retval None
   */
-void SystemClock_Config(void)
+void SystemClock_Config(void) 
 {
   RCC_OscInitTypeDef RCC_OscInitStruct = {0};
   RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};

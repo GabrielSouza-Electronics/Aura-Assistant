@@ -104,7 +104,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     Components/VL53L5CX/uld/platform.c
     Components/VL53L5CX/uld/vl53l5cx_api.c
     Components/WS2812C/ws2812c.c
-    Components/AudioSFX/audio_sfx.c
+    Components/Audio/welcome_audio.c
     Components/PDM/pdm_decimator.c
     Components/AudioDSP/audio_dsp.c
 )
@@ -128,7 +128,7 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
     Components/VL53L5CX
     Components/VL53L5CX/uld
     Components/WS2812C
-    Components/AudioSFX
+    Components/Audio
     Components/PDM
     Components/AudioDSP
 )

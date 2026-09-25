@@ -8,10 +8,10 @@
 #include <mvp/View.hpp>
 #include <gui/screen1_screen/Screen1Presenter.hpp>
 #include <touchgfx/widgets/Box.hpp>
+#include <touchgfx/widgets/AnimatedImage.hpp>
 #include <touchgfx/widgets/canvas/Circle.hpp>
 #include <touchgfx/widgets/canvas/PainterRGB565.hpp>
-#include <touchgfx/widgets/Image.hpp>
-#include <touchgfx/widgets/canvas/Line.hpp>
+#include <touchgfx/widgets/TextArea.hpp>
 
 class Screen1ViewBase : public touchgfx::View<Screen1Presenter>
 {
@@ -30,28 +30,10 @@ protected:
      */
     touchgfx::Box __background;
     touchgfx::Box Background;
+    touchgfx::AnimatedImage animatedImage1;
     touchgfx::Circle Ring;
     touchgfx::PainterRGB565 RingPainter;
-    touchgfx::Image Ring_Effect;
-    touchgfx::Image BatteryBody;
-    touchgfx::Image Battery50;
-    touchgfx::Image BatteryFull;
-    touchgfx::Image BatteryLow;
-    touchgfx::Image DotEffect;
-    touchgfx::Line ShortLine;
-    touchgfx::PainterRGB565 ShortLinePainter;
-    touchgfx::Circle Dot_1;
-    touchgfx::PainterRGB565 Dot_1Painter;
-    touchgfx::Circle Dot_2;
-    touchgfx::PainterRGB565 Dot_2Painter;
-    touchgfx::Circle Dot_3;
-    touchgfx::PainterRGB565 Dot_3Painter;
-    touchgfx::Circle Dot_4;
-    touchgfx::PainterRGB565 Dot_4Painter;
-    touchgfx::Image IconMainSelected;
-    touchgfx::Image CalendarIconBig;
-    touchgfx::Image IconSideSelected;
-    touchgfx::Image CalendarTextBig;
+    touchgfx::TextArea textArea1;
 
 private:
 
