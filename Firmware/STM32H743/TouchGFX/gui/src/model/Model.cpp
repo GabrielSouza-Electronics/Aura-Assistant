@@ -1,6 +1,11 @@
 #include <gui/model/Model.hpp>
 #include <gui/model/ModelListener.hpp>
+#include <math.h>
 #if defined(STM32H743xx)
+extern "C"
+{
+#include "app.h"
+}
 #include "app_hand_tracking.h"
 #include "app_ui_audio.h"
 #elif defined(_WIN32)
@@ -22,10 +27,57 @@ void Model::tick()
     int8_t x = 0;
     int8_t y = 0;
     const bool present = APP_HandTracking_ReadPointer(&x, &y);
+    const bool click = APP_HandTracking_TakeClick();
     if (modelListener)
     {
         modelListener->handUpdated(present, x / 10.0f, y / 10.0f);
+        if (present && click) modelListener->handClicked();
     }
+#endif
+}
+
+void Model::setHeroBreath(uint8_t level)
+{
+#if defined(STM32H743xx)
+    APP_LED_SetHeroBreath(level);
+#else
+    (void)level;
+#endif
+}
+
+void Model::setCarouselLED(float angle, uint8_t visibility)
+{
+#if defined(STM32H743xx)
+    const float fullTurn = 6.28318530718f;
+    float phase = fmodf(angle, fullTurn);
+    if (phase < 0.0f) phase += fullTurn;
+    APP_LED_SetCarousel((uint16_t)(phase * (65535.0f / fullTurn)), visibility);
+#else
+    (void)angle;
+    (void)visibility;
+#endif
+}
+
+void Model::pulseMenuEnterLED()
+{
+#if defined(STM32H743xx)
+    APP_LED_MenuEnterPulse();
+#endif
+}
+
+bool Model::startupReady() const
+{
+#if defined(STM32H743xx)
+    return APP_GetInitStatus() == APP_INIT_OK;
+#else
+    return true;
+#endif
+}
+
+void Model::completeStartup()
+{
+#if defined(STM32H743xx)
+    APP_DisplayStartupComplete();
 #endif
 }
 

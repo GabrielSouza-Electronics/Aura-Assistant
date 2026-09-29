@@ -26,3 +26,33 @@ void Screen1Presenter::playMenuSound(MenuSound sound)
 {
     model->playMenuSound(sound);
 }
+
+void Screen1Presenter::handClicked()
+{
+    view.requestHandClick();
+}
+
+void Screen1Presenter::setHeroBreath(uint8_t level)
+{
+    model->setHeroBreath(level);
+}
+
+void Screen1Presenter::setCarouselLED(float angle, uint8_t visibility)
+{
+    model->setCarouselLED(angle, visibility);
+}
+
+void Screen1Presenter::pulseMenuEnterLED()
+{
+    model->pulseMenuEnterLED();
+}
+
+bool Screen1Presenter::startupReady() const
+{
+    return model->startupReady();
+}
+
+void Screen1Presenter::completeStartup()
+{
+    model->completeStartup();
+}

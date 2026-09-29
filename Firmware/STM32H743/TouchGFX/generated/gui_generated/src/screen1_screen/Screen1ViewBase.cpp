@@ -21,7 +21,7 @@ Screen1ViewBase::Screen1ViewBase()
 
     hero.setXY(78, 139);
     hero.setBitmaps(BITMAP_HERO_00_ID, BITMAP_HERO_23_ID);
-    hero.setUpdateTicksInterval(3);
+    hero.setUpdateTicksInterval(1);
     hero.startAnimation(false, true, true);
     add(hero);
 
@@ -59,7 +59,7 @@ Screen1ViewBase::Screen1ViewBase()
 
     divSpark.setXY(305, 226);
     divSpark.setBitmaps(BITMAP_SPARK_00_ID, BITMAP_SPARK_13_ID);
-    divSpark.setUpdateTicksInterval(4);
+    divSpark.setUpdateTicksInterval(1);
     divSpark.startAnimation(false, true, true);
     add(divSpark);
 

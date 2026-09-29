@@ -33,6 +33,9 @@ TickType_t xTaskGetTickCount(void);
 #include <cmath>
 #include <cstdio>
 #include "app_hand_tracking.h"
+extern "C" {
+#include "app.h"
+}
 #include "app_ui_audio.h"
 #include "STM32TouchController.hpp"
 #include <gui/model/Model.hpp>
@@ -41,11 +44,20 @@ TickType_t xTaskGetTickCount(void);
 static uint32_t now;
 static APP_UIAudioEvent_t requested = APP_UI_AUDIO_NONE;
 extern "C" void APP_UIAudio_Request(APP_UIAudioEvent_t event) { requested = event; }
+extern "C" void APP_LED_SetHeroBreath(uint8_t) {}
+extern "C" void APP_LED_SetCarousel(uint16_t, uint8_t) {}
+extern "C" void APP_LED_MenuEnterPulse(void) {}
+static APP_InitStatus_t startupStatus = APP_INIT_WAITING_FOR_TOF;
+static unsigned startupCompletions;
+extern "C" APP_InitStatus_t APP_GetInitStatus(void) { return startupStatus; }
+extern "C" void APP_DisplayStartupComplete(void) { ++startupCompletions; }
 extern "C" uint32_t xTaskGetTickCount(void) { return now; }
 
 class Input : public ModelListener {
 public:
     bool present = false;
+    unsigned clicks = 0;
+    void handClicked() override { ++clicks; }
     float x = 0, y = 0;
     void handUpdated(bool p, float a, float b) override {
         present = p; x = a; y = b;
@@ -64,6 +76,10 @@ static void frame(int mm, uint16_t mask = 0xFFFF) {
 }
 int main() {
     Model model;
+    assert(!model.startupReady());
+    startupStatus = APP_INIT_OK;
+    assert(model.startupReady());
+    model.completeStartup(); assert(startupCompletions == 1);
     Input input;
     model.bind(&input);
     model.playMenuSound(MenuSound::Tick); assert(requested == APP_UI_AUDIO_TICK);
@@ -85,10 +101,18 @@ int main() {
     assert(menuSoundForTransition(0, 0, -1, 0, true, false) == MenuSound::Exit);
     model.tick();
     assert(!input.present);
+    frame(150); model.tick(); assert(!input.present);
     frame(149); model.tick();
     assert(input.present && input.x == 0 && input.y == 0);
-    frame(150); model.tick();
+    // Hysteresis: retain selection mode through 200 mm, release above it.
+    frame(150); model.tick(); assert(input.present);
+    frame(199); model.tick(); assert(input.present);
+    frame(200); model.tick(); assert(input.present);
+    frame(201); model.tick();
     assert(!input.present && input.x == 0 && input.y == 0);
+    frame(200); model.tick(); assert(!input.present);
+    frame(150); model.tick(); assert(!input.present);
+    frame(149); model.tick(); assert(input.present);
     frame(100); model.tick(); assert(input.present);
     frame(0); model.tick(); assert(!input.present);
     frame(100); now = 599; model.tick(); assert(input.present);
@@ -122,21 +146,65 @@ int main() {
         assert(std::fabs(menu.getAngle() - (-0.055f * input.x)) < 0.000001f);
         const float angle = menu.getAngle();
         for (int i = 0; i < 10; ++i) menu.tick(true, 0, 0);
-        assert(menu.getAngle() == angle); // No snap at X=0.
+        assert(std::fabs(menu.getAngle()) <= std::fabs(angle));
+        const float centeredAngle = menu.getAngle();
         menu.tick(false, 1, -1);
-        assert(menu.getAngle() == angle); // Release cannot rotate.
+        assert(menu.getAngle() == centeredAngle); // Release cannot rotate.
     }
     // Every integer X, both directions; Y cannot change angular velocity.
     for (int axis = -10; axis <= 10; ++axis) {
         for (int vertical = -10; vertical <= 10; ++vertical) {
             MenuLogic menu;
             menu.tick(true, axis / 10.0f, vertical / 10.0f);
-            assert(std::fabs(menu.getAngle() + 0.055f * axis / 10.0f) < 0.000001f);
+            const float expected = (std::abs(axis) <= 2 && vertical >= -5)
+                ? 0.0f : -0.055f * axis / 10.0f;
+            assert(std::fabs(menu.getAngle() - expected) < 0.000001f);
             menu.tick(true, -axis / 10.0f, vertical / 10.0f);
             assert(std::fabs(menu.getAngle()) < 0.000001f);
         }
     }
     MenuLogic dwell;
+    // Center capture at 20%, release above 35%, continuous off-center spin.
+    MenuLogic snap;
+    for (int i=0; i<30; ++i) snap.tick(true,0.5f,0);
+    const int selected = snap.getSelected();
+    snap.tick(true,0.2f,0);
+    for (int i=0; i<55; ++i) snap.tick(true,0.3f,0);
+    assert(snap.getSelected() == selected && snap.getScreen() == -1);
+    assert(std::fabs(snap.getAngle() + selected * 6.28318530718f / ML_COUNT) < 0.0031f);
+    float before = snap.getAngle();
+    snap.tick(true,0.4f,0);
+    assert(std::fabs(snap.getAngle() - before + 0.022f) < 0.000001f);
+    before = snap.getAngle();
+    for (int i=0; i<200; ++i) snap.tick(true,0.3f,0);
+    assert(snap.getScreen() == -1);
+    assert(std::fabs(snap.getAngle() - before + 3.3f) < 0.0001f);
+    // Strict threshold, one click per approach, hysteresis and stale samples.
+    APP_HandTracking_Reset();
+    frame(40); model.tick(); assert(input.clicks == 0);
+    frame(39); model.tick(); assert(input.clicks == 1);
+    model.tick(); frame(20); model.tick(); assert(input.clicks == 1);
+    frame(49); model.tick(); frame(39); model.tick(); assert(input.clicks == 1);
+    frame(0); model.tick(); frame(39); model.tick(); assert(input.clicks == 1);
+    frame(50); model.tick(); frame(39); model.tick(); assert(input.clicks == 2);
+    frame(50); model.tick(); frame(39); now += 600;
+    model.tick(); assert(input.clicks == 2);
+    frame(50); model.tick(); frame(39); frame(0);
+    model.tick(); assert(input.clicks == 2);
+
+    MenuLogic clicked;
+    clicked.tick(true, 1, 0, true);
+    assert(clicked.getScreen() == 0 && clicked.getAngle() == 0);
+    assert(clicked.takeNavEvent() == 1); // Same visual effect as dwell.
+    clicked.tick(true, 0, 0, true);
+    assert(clicked.takeNavEvent() == 0); // No entry inside an open submenu.
+    for (int i=0; i<12; ++i) clicked.tick(true,0,-1);
+    assert(clicked.getScreen() == -1);
+    clicked.tick(true,0,0,true); assert(clicked.getScreen() == 0);
+    MenuLogic rejected;
+    rejected.tick(false,0,0,true); assert(rejected.getScreen() == -1);
+    rejected.tick(true,0,-1,true); assert(rejected.getScreen() == -1);
+
     for (int i=0; i<71; ++i) dwell.tick(true,0,0);
     assert(dwell.getScreen() == -1);
     dwell.tick(true,0,0); assert(dwell.getScreen() == 0);
@@ -149,7 +217,7 @@ int main() {
     STM32TouchController controller;
     int32_t x=123, y=456;
     assert(!controller.sampleTouch(x,y) && x==123 && y==456);
-    puts("PASS: direct Model input, lifecycle/timeout, proportional X at all 21 values, Y independence, no snap, reversal and navigation");
+    puts("PASS: Model input, distance/click hysteresis, timeout, center capture, continuous rotation, reversal and navigation");
 }
 """)
     includes = [tmp, root / "App/Inc", root / "BSP/Inc",

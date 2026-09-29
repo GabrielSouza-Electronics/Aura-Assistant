@@ -54,6 +54,7 @@ public:
     }
 
     virtual void initialize();
+    virtual void taskEntry() override;
 
     /**
      * @fn virtual void TouchGFXHAL::disableInterrupts();

@@ -15,12 +15,12 @@
  * sem desenhar nada.
  *
  * Direct input: normalized X controls angular speed; Y controls tilt/back.
- * There is no automatic snap or additional dead zone in this class.
+ * Near neutral X, hysteresis enables gentle alignment of the selected item.
  * The ToF tracker owns sensor calibration/filtering before the UI.
  *
  *  3. HISTERESE. Depois de trocar de opcao e preciso passar de 60% do
  *     caminho para trocar de novo, senao pisca na fronteira.
- *  4. DWELL com anel de progresso. Nao ha clique com ToF.
+ *  4. DWELL com anel de progresso ou clique de aproximacao com ToF.
  *  5. ARMED. Depois de cancelar, novas confirmacoes ficam bloqueadas ate o
  *     usuario girar o carrossel ou tirar a mao. Sem isso o dwell continuava
  *     correndo e reabria sozinho o menu que a pessoa acabara de recusar.
@@ -34,7 +34,7 @@ public:
     MenuLogic();
 
     /* Uma vez por tick, com o estado do ToF. */
-    void tick(bool handPresent, float handX, float handY);
+    void tick(bool handPresent, float handX, float handY, bool click = false);
 
     /* --- estado --------------------------------------------------------- */
     int   getScreen() const { return screen; }      /* -1 = carrossel        */
@@ -60,6 +60,7 @@ private:
     int   sel;
     int   dwell;
     bool  armed;
+    bool  centering;
     int   screen;
     int   msg;
     bool  cancelled;

@@ -8,6 +8,7 @@
 #define APP_HAND_DEAD_ZONE               1
 #define APP_HAND_MIN_DISTANCE_MM         10U
 #define APP_HAND_ACTIVE_DISTANCE_MM      150U
+#define APP_HAND_RELEASE_DISTANCE_MM     200U
 #define APP_HAND_PRESENCE_DISTANCE_MM    500U
 #define APP_HAND_TRACKING_MAX_DISTANCE_MM 1000U
 #define APP_HAND_NO_TARGET_Z_MM          1001U
@@ -32,6 +33,8 @@ static struct
     int8_t x;
     int8_t y;
     bool pressed;
+    bool click_pending;
+    bool click_latched;
 } app_hand_pointer;
 
 static void APP_HandTracking_PublishPointer(void)
@@ -41,8 +44,38 @@ static void APP_HandTracking_PublishPointer(void)
     app_hand_pointer.y = app_hand_tracking.y;
     app_hand_pointer.pressed = app_hand_tracking.hand_active &&
                               (app_hand_tracking.lost_frame_count == 0U);
+    if (app_hand_tracking.lost_frame_count == 0U)
+    {
+        if (app_hand_tracking.raw_z_mm >= 50U)
+        {
+            app_hand_pointer.click_latched = false;
+        }
+        else if (app_hand_pointer.pressed &&
+                 (app_hand_tracking.raw_z_mm < 40U) &&
+                 !app_hand_pointer.click_latched)
+        {
+            app_hand_pointer.click_pending = true;
+            app_hand_pointer.click_latched = true;
+        }
+    }
+    if (!app_hand_pointer.pressed)
+    {
+        app_hand_pointer.click_pending = false;
+    }
     app_hand_pointer.tick = xTaskGetTickCount();
     taskEXIT_CRITICAL();
+}
+
+bool APP_HandTracking_TakeClick(void)
+{
+    bool click;
+    taskENTER_CRITICAL();
+    click = app_hand_pointer.click_pending && app_hand_pointer.pressed &&
+        ((TickType_t)(xTaskGetTickCount() - app_hand_pointer.tick) <
+         pdMS_TO_TICKS(APP_HAND_POINTER_TIMEOUT_MS));
+    app_hand_pointer.click_pending = false;
+    taskEXIT_CRITICAL();
+    return click;
 }
 
 bool APP_HandTracking_ReadPointer(int8_t *x, int8_t *y)
@@ -167,6 +200,10 @@ static void APP_HandTracking_PublishNoTarget(void)
 
 void APP_HandTracking_Reset(void)
 {
+    taskENTER_CRITICAL();
+    app_hand_pointer.click_latched = false;
+    app_hand_pointer.click_pending = false;
+    taskEXIT_CRITICAL();
     app_hand_filter_initialized = false;
     app_hand_tracking.update_count = 0U;
     app_hand_tracking.lost_frame_count = APP_HAND_LOST_FRAME_HOLD_COUNT;
@@ -300,8 +337,11 @@ void APP_HandTracking_Process(const BSP_TOF_Data_t *tof_data)
         (uint8_t)(((uint32_t)valid_zones * 100U) / BSP_TOF_ZONE_COUNT);
     app_hand_tracking.person_present =
         (app_hand_tracking.z_mm <= APP_HAND_PRESENCE_DISTANCE_MM);
-    app_hand_tracking.hand_active =
-        (raw_z < APP_HAND_ACTIVE_DISTANCE_MM);
+    /* Enter below 150 mm; once active, release only above 200 mm.
+       Use the current depth, without the temporal Z filter's extra delay. */
+    app_hand_tracking.hand_active = app_hand_tracking.hand_active
+        ? (raw_z <= APP_HAND_RELEASE_DISTANCE_MM)
+        : (raw_z < APP_HAND_ACTIVE_DISTANCE_MM);
     if (app_hand_tracking.hand_active)
     {
         app_hand_tracking.status = APP_HAND_STATUS_HAND_ACTIVE;

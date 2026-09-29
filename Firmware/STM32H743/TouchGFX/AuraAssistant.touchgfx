@@ -15,7 +15,7 @@
             "Name": "board",
             "Width": 480,
             "Height": 480,
-            "RelativeFilename": "aura\\circuit\\board.png"
+            "RelativeFilename": "board.png"
           },
           {
             "Type": "AnimatedImage",

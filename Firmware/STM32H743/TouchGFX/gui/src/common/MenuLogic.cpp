@@ -21,6 +21,10 @@ static const float ACT_DOWN  = -0.55f;
 static const int   ACT_HOLD  = 12;
 static const float VIS_K     = 0.10f;
 static const float TILT_MAX  = 26.0f;
+static const float CENTER_ENTER = 0.20f;
+static const float CENTER_EXIT  = 0.35f;
+static const float CENTER_GAIN  = 0.14f;
+static const float CENTER_EPS   = 0.003f;
 
 static const int16_t ICON_SZ[3] = { 36, 48, 64 };
 
@@ -31,6 +35,7 @@ MenuLogic::MenuLogic()
     sel = 0;
     dwell = 0;
     armed = true;
+    centering = false;
     screen = -1;
     msg = 0;
     cancelled = false;
@@ -73,7 +78,7 @@ void MenuLogic::back()
     }
 }
 
-void MenuLogic::tick(bool handPresent, float handX, float handY)
+void MenuLogic::tick(bool handPresent, float handX, float handY, bool click)
 {
     vis += ((handPresent ? 1.0f : 0.0f) - vis) * VIS_K;
 
@@ -91,12 +96,34 @@ void MenuLogic::tick(bool handPresent, float handX, float handY)
         msg--;
     }
 
-    // Direct axis control: no velocity remapping or automatic snap.
-    const float h = handPresent ? handX : 0.0f;
+    const float vy = handPresent ? handY : 0.0f;
+    if (!handPresent || screen >= 0 || vy < ACT_DOWN)
+    {
+        centering = false;
+    }
+    else if (!click)
+    {
+        const float magnitude = fabsf(handX);
+        if (magnitude <= CENTER_ENTER) centering = true;
+        else if (magnitude >= CENTER_EXIT) centering = false;
+    }
+    const float h = (handPresent && !click && !centering) ? handX : 0.0f;
     angle += SPIN_GAIN * h;
     if (h != 0.0f)
     {
         armed = true;
+    }
+
+    bool centered = false;
+    if (centering && !click)
+    {
+        // Align the selected item using the shortest path across the wrap.
+        const float fullTurn = 2.0f * PI_F;
+        float error = fmodf(-sel * STEP - angle, fullTurn);
+        if (error > PI_F) error -= fullTurn;
+        if (error < -PI_F) error += fullTurn;
+        centered = fabsf(error) <= CENTER_EPS;
+        angle += centered ? error : error * CENTER_GAIN;
     }
 
     /* --- selecao, com histerese --- */
@@ -121,8 +148,7 @@ void MenuLogic::tick(bool handPresent, float handX, float handY)
 
     /* Inputs are normalized by the source (mouse or calibrated ToF).
        Do not select by dwell while the user is requesting back/cancel. */
-    const float vy = handPresent ? handY : 0.0f;
-    if (handPresent && h == 0.0f && vy >= ACT_DOWN)
+    if (handPresent && centering && centered && vy >= ACT_DOWN)
     {
         dwell++;
     }
@@ -130,12 +156,15 @@ void MenuLogic::tick(bool handPresent, float handX, float handY)
     {
         dwell = 0;
     }
-    if (dwell >= DWELL_N && armed && screen < 0)
+    /* A deliberate proximity click can confirm again after cancellation.
+       Back/cancel keeps priority when the hand points down. */
+    const bool confirmClick = click && handPresent && vy >= ACT_DOWN;
+    if (((dwell >= DWELL_N && armed) || confirmClick) && screen < 0)
     {
         open(sel);
     }
 
-    /* --- eixo vertical: inclinar / cancelar; entrada somente por dwell --- */
+    /* --- eixo vertical: inclinar / cancelar --- */
     tilt = vy * TILT_MAX;
 
     if (handPresent && vy < ACT_DOWN)

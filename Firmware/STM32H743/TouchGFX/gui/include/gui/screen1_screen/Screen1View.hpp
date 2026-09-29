@@ -31,6 +31,7 @@ public:
         handY = y;
     }
     void setWifiLevel(int lvl);
+    void requestHandClick() { handClickPending = true; }
     void setBatteryLevel(int pct);
     void setChargerStatus(bool chg);
 
@@ -39,6 +40,7 @@ protected:
     MenuLogic    menu;
 
     bool  handPresent;
+    bool  handClickPending = false;
     bool  previousHandPresent;
     float handX, handY;
     int   wifiLevel;
@@ -48,6 +50,13 @@ protected:
     uint16_t lastIconId[5];      /* evita setBitmap redundante             */
 
     void applyStatus();
+    enum class StartupStage { Rise, Wait, Dock, Done };
+    StartupStage startupStage = StartupStage::Rise;
+    uint16_t startupTicks = 0;
+    int16_t heroHomeX = 0;
+    int16_t heroHomeY = 0;
+    void setHomeVisible(bool visible);
+    bool tickStartup();
 };
 
 

@@ -69,6 +69,8 @@ void APP_HandTracking_Process(const BSP_TOF_Data_t *tof_data);
  * Returns false for release, invalid targets or samples older than 600 ms.
  * Coordinates are only written while pressed. */
 bool APP_HandTracking_ReadPointer(int8_t *x, int8_t *y);
+/* Consume one fresh approach below 40 mm; rearmed by a valid >=50 mm sample. */
+bool APP_HandTracking_TakeClick(void);
 
 #ifdef __cplusplus
 }

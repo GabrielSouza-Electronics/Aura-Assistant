@@ -47,7 +47,6 @@ set(TouchGFX_Src
     ${CMAKE_SOURCE_DIR}/TouchGFX/generated/gui_generated/src/screen1_screen/Screen1ViewBase.cpp
     ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/BitmapDatabase.cpp
     ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/SVGDatabase.cpp
-    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/circuit/image_board.cpp
     ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/circuit/image_pulse_11_0.cpp
     ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/circuit/image_pulse_11_1.cpp
     ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/circuit/image_pulse_11_2.cpp
@@ -242,6 +241,7 @@ set(TouchGFX_Src
     ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/text/image_msg_nocontent.cpp
     ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/text/image_sb_ready.cpp
     ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/text/image_sb_wave.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/image_board.cpp
     ${CMAKE_SOURCE_DIR}/TouchGFX/generated/texts/src/LanguageGb.cpp
     ${CMAKE_SOURCE_DIR}/TouchGFX/generated/texts/src/Texts.cpp
     ${CMAKE_SOURCE_DIR}/TouchGFX/generated/texts/src/TypedTextDatabase.cpp

@@ -10,6 +10,7 @@ public:
     
     virtual ~ModelListener() {}
     virtual void handUpdated(bool, float, float) {}
+    virtual void handClicked() {}
 
     void bind(Model* m)
     {

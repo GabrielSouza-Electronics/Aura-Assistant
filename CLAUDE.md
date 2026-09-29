@@ -1373,16 +1373,42 @@ PB3 is used by WIFI_EN, therefore SWO is not normally available.
 
 # 37. CURRENT PROJECT PHASE
 
-The TouchGFX UI is being rebuilt from a clean Screen1 project.
+The TouchGFX UI was rebuilt from a clean Screen1 project. The legacy space
+theme (ParticleField, OrbitalMenu, StatusBar, AuraAtoms) was removed — see
+section 39.
 
-Do not assume the old ParticleField, OrbitalMenu, StatusBar, AuraAtoms or
-custom asset pipeline exists. Those legacy files have been removed.
+The CURRENT UI implementation is the circuit-board theme. Confirmed present
+on disk (verified by directory listing, 2026-09-29):
 
-The current UI source of truth is:
+```
+TouchGFX/gui/include/gui/common/
+    CircuitField.hpp
+    MenuLogic.hpp
+    MenuSound.hpp
+TouchGFX/gui/src/common/
+    CircuitField.cpp
+    CircuitRoutes.cpp
+    MenuLogic.cpp
+TouchGFX/gui/include/gui/screen1_screen/
+    Screen1View.hpp
+    Screen1Presenter.hpp
+TouchGFX/gui/src/screen1_screen/
+    Screen1View.cpp     (~14 KB — substantial, do not assume it is stub code)
+    Screen1Presenter.cpp
+```
 
+`MenuSound.hpp` has no corresponding `.cpp` confirmed yet — check before
+assuming it is wired up or still a stub.
+
+Source of truth for current UI state:
 - `Firmware/STM32H743/TouchGFX/AuraAssistant.touchgfx`
 - `Firmware/STM32H743/TouchGFX/gui/`
 - `Firmware/STM32H743/TouchGFX/assets/`
+
+Before modifying `CircuitField`, `MenuLogic`, `MenuSound`, or `Screen1View`,
+read the current file first — it likely has been iterated on since section 40
+(rendering) and section 15 (TouchGFX) were last written, and may differ from
+what a generic circuit-theme description would predict.
 
 Preserve TouchGFX generated files unless regeneration is explicitly requested.
 
@@ -1391,22 +1417,23 @@ Preserve TouchGFX generated files unless regeneration is explicitly requested.
 Audio effects are no longer synthesized in C.
 
 The current startup asset is:
-
 - `Firmware/STM32H743/aura_assets/audio/Welcome.wav`
 
 It is converted to:
-
 - `Firmware/STM32H743/Components/Audio/welcome_audio.c`
 - `Firmware/STM32H743/Components/Audio/welcome_audio.h`
 
 The reusable converter is `aura_assets/audio/wav_to_c_array.py`.
 The speaker output uses DMA circular playback and a volume range from 0 to 10,
-with default volume 5.
+default volume 5.
+
+`MenuSound.hpp` (section 37) is presumably the bridge between menu
+interaction events and this audio playback — confirm its actual contents
+before assuming its role.
 
 # 39. UI LEGACY CLEANUP
 
 Do not recreate or reference the removed legacy UI pipeline:
-
 - ParticleField
 - OrbitalMenu
 - StatusBar
@@ -1415,7 +1442,14 @@ Do not recreate or reference the removed legacy UI pipeline:
 - sim_particles.py
 - sim_menu.py
 
-New UI work should be implemented in the current TouchGFX Screen1 project.
+This refers to the earlier SPACE-THEMED UI (starfield/galaxy/nebula visual
+design). It does NOT refer to the current circuit-board theme
+(CircuitField / MenuLogic / MenuSound), which is the active implementation —
+see section 37.
+
+New UI work should be implemented in the current TouchGFX Screen1 project,
+extending CircuitField/MenuLogic/Screen1View rather than reintroducing the
+space-theme classes above.
 
 # 40. RENDERING AND DISPLAY ORIENTATION
 
@@ -1425,11 +1459,58 @@ Do not change panel orientation registers without the exact panel/DWIN
 initialization source. Software framebuffer inversion is expensive with the
 single-buffer configuration and must be evaluated before implementation.
 
+TouchGFX-side rotation (separate from the panel register question above):
+the app runs in Portrait while the panel is native landscape. This requires
+three things to agree — Designer Display Orientation = Portrait, each
+image's Layout Rotation = 90 (set in bulk via the Designer's Images tab,
+Ctrl+A — do not write this into application.config programmatically, the
+schema varies by TouchGFX version and this has corrupted the file before),
+and source PNGs pre-rotated 90° left before import. All position math in
+CircuitField.cpp / MenuLogic.cpp already assumes the rotated coordinate
+system: (x, y) → (y, 479-x). When adding new positions, derive them with
+that transform or copy the pattern from an existing position — do not
+eyeball it, sign errors here have shipped twice already.
+
 # 41. ASSET POLICY
 
 Keep source assets outside generated TouchGFX directories when possible.
 Install only assets required by the current TouchGFX project. Do not add old
 simulation assets or duplicate widget implementations to TouchGFX/gui.
+
+Source generators and pre-rotated PNGs live in
+`Firmware/STM32H743/aura_assets/` (gen/ scripts, assets_rotacionados/,
+preview/), outside TouchGFX entirely — the Designer scans assets/ and gui/,
+so keeping generators out avoids accidental import or compilation.
+
+Known asset pitfalls (each has cost real debugging time):
+- L8 palette is 256 colours per image. Verify color count after generating;
+  if it overflows, reduce quantization levels in the generator — do not
+  enable dithering as a fix, it creates new colors during the Designer's
+  conversion and can overflow an already-correct file.
+- Sprites need alpha 0 at the edge, or the whole bounding box reads as a
+  faint box over the dark background.
+- Dark background elements must survive backlight leak on the physical
+  panel — anything under ~15% alpha effectively vanishes. Test by
+  compositing over a lightened background, not just pure black, before
+  approving something as "subtle enough".
+- Bitmap ID sequences (`BITMAP_X_00_ID + i` patterns in code) require every
+  file in that sequence's folder to be present and correctly numbered — a
+  stray or missing file breaks the arithmetic with no compile error.
+- `near`, `far`, `CY` collide with Windows macros/types pulled in via the
+  simulator's MinGW headers. Short identifiers like these only fail in the
+  simulator, never when compiling for target.
+- Text is always a sprite, never TextArea — TextArea does not respect Layout
+  Rotation and would render sideways.
+- AnimatedImage does not start itself; call
+  `widget.startAnimation(false, true, true)` in setupScreen(), or enable
+  "Loop Animation" in the Designer. Without one of the two, it shows a
+  static first frame.
+
+Workflow for new screens or visual changes: generate a Python mockup first
+(PNG and/or GIF) under `aura_assets/preview/`, get it approved, only then
+touch TouchGFX/gui C++. Mockup iteration costs seconds; C++ iteration costs
+a rebuild.
+
 # 42. BUILD VALIDATION
 
 After modifications, run the project's existing Debug CMake build.

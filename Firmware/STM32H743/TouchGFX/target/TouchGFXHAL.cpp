@@ -24,7 +24,23 @@
 
 /* USER CODE BEGIN TouchGFXHAL.cpp */
 
+#include "cmsis_os2.h"
+extern "C"
+{
+#include "app.h"
+}
+
 using namespace touchgfx;
+
+void TouchGFXHAL::taskEntry()
+{
+    while ((APP_GetInitStatus() != APP_INIT_OK) &&
+           (APP_GetInitStatus() != APP_INIT_WAITING_FOR_TOF))
+    {
+        osDelay(10U);
+    }
+    TouchGFXGeneratedHAL::taskEntry();
+}
 
 void TouchGFXHAL::initialize()
 {
@@ -156,6 +172,7 @@ bool TouchGFXHAL::beginFrame()
 void TouchGFXHAL::endFrame()
 {
     TouchGFXGeneratedHAL::endFrame();
+    APP_DisplayFramePresented();
 }
 
 /* USER CODE END TouchGFXHAL.cpp */

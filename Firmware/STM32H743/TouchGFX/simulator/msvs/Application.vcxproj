@@ -182,6 +182,7 @@
     <ClInclude Include="..\..\generated\gui_generated\include\gui_generated\screen1_screen\Screen1ViewBase.hpp"/>
     <ClInclude Include="..\..\gui\include\gui\common\CircuitField.hpp"/>
     <ClInclude Include="..\..\gui\include\gui\common\MenuLogic.hpp"/>
+    <ClInclude Include="..\..\gui\include\gui\common\MenuSound.hpp"/>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="$(ApplicationRoot)\generated\simulator\touchgfx.rc"/>

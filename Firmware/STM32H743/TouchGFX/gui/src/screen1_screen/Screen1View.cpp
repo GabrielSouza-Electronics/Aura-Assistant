@@ -4,6 +4,15 @@
 
 using namespace touchgfx;
 
+/* Same curve as aura_assets/gen/gen_hero.py:
+   round(255 * (0.5 - 0.5 * cos(2 * pi * frame / 24))). */
+static const uint8_t HERO_BREATH[] = {
+    0, 4, 17, 37, 64, 95, 128, 160, 191, 218, 238, 251,
+    255, 251, 238, 218, 191, 160, 128, 95, 64, 37, 17, 4
+};
+static_assert(sizeof(HERO_BREATH) == BITMAP_HERO_23_ID - BITMAP_HERO_00_ID + 1,
+              "Hero breath curve must match the animation frames");
+
 /* Posicoes fixas, em coordenadas JA ROTACIONADAS. Sao as mesmas da tabela
    do LEIA-ME; se voce mover um widget no Designer, ajuste aqui tambem
    apenas se o codigo o reposiciona (os icones e o anel).                  */
@@ -83,6 +92,9 @@ void Screen1View::setupScreen()
          loop    = true   -> repete indefinidamente
        Se voce marcar "Auto start" no Designer estas duas chamadas viram
        redundantes, mas nao atrapalham.                                  */
+    /* 24 frames x 3 ticks: a 72-tick breath cycle.
+       The LED ring follows the current Hero frame through the Model. */
+    hero.setUpdateTicksInterval(3);
     hero.startAnimation(false, true, true);
     divSpark.startAnimation(false, true, true);
 
@@ -104,6 +116,80 @@ void Screen1View::setupScreen()
                  (int16_t)(239 - SB_WAVE_H / 2));
 
     applyStatus();
+    heroHomeX = hero.getX();
+    heroHomeY = hero.getY();
+    startupStage = StartupStage::Rise;
+    startupTicks = 0;
+    setHomeVisible(false);
+    // Assets are rotated: physical bottom is framebuffer +X.
+    hero.setXY(480, (480 - hero.getHeight()) / 2);
+    hero.setAlpha(255);
+}
+
+void Screen1View::setHomeVisible(bool visible)
+{
+    Drawable* widgets[] = {
+        &board, &field, &icon0, &icon1, &icon2, &icon3, &icon4,
+        &selRing, &lblOption, &divLine, &divSpark, &msgState,
+        &logoStatus, &wifiIcon, &battFill, &battFrame, &sbReady, &sbWave
+    };
+    for (Drawable* widget : widgets)
+    {
+        widget->setVisible(visible);
+    }
+    invalidate();
+}
+
+bool Screen1View::tickStartup()
+{
+    if (startupStage == StartupStage::Done) return false;
+    // Discard gestures collected during bring-up, including proximity clicks.
+    handPresent = false;
+    previousHandPresent = false;
+    handClickPending = false;
+    const int16_t centerX = (480 - hero.getWidth()) / 2;
+    const int16_t centerY = (480 - hero.getHeight()) / 2;
+    ++startupTicks;
+    if (startupStage == StartupStage::Wait)
+    {
+        // Minimum centered hold; on hardware also wait for successful ToF frames.
+        if (startupTicks >= 45 && presenter->startupReady())
+        {
+            startupStage = StartupStage::Dock;
+            startupTicks = 0;
+        }
+        else if (startupTicks >= 45)
+        {
+            startupTicks = 45; // Indefinite sensor wait without counter overflow.
+        }
+        return true;
+    }
+    const uint16_t duration = (startupStage == StartupStage::Rise) ? 45 : 36;
+    const float t = (float)startupTicks / duration;
+    const float ease = t * t * (3.0f - 2.0f * t);
+    const int16_t fromX = (startupStage == StartupStage::Rise) ? 480 : centerX;
+    const int16_t toX = (startupStage == StartupStage::Rise) ? centerX : heroHomeX;
+    const int16_t toY = (startupStage == StartupStage::Rise) ? centerY : heroHomeY;
+    hero.invalidate();
+    hero.setXY((int16_t)(fromX + (toX - fromX) * ease),
+               (int16_t)(centerY + (toY - centerY) * ease));
+    hero.invalidate();
+    if (startupTicks >= duration)
+    {
+        startupTicks = 0;
+        if (startupStage == StartupStage::Rise)
+        {
+            startupStage = StartupStage::Wait;
+        }
+        else
+        {
+            startupStage = StartupStage::Done;
+            setHomeVisible(true);
+            presenter->completeStartup();
+            return false; // Apply the idle layout before this frame is rendered.
+        }
+    }
+    return true;
 }
 
 void Screen1View::tearDownScreen()
@@ -153,9 +239,18 @@ void Screen1View::applyStatus()
 
 void Screen1View::handleTickEvent()
 {
+    const unsigned heroFrame = hero.getBitmap().getId() - BITMAP_HERO_00_ID;
+    if (heroFrame < sizeof(HERO_BREATH))
+    {
+        presenter->setHeroBreath(HERO_BREATH[heroFrame]);
+    }
+
+    if (tickStartup()) return;
+
     const int previousScreen = menu.getScreen();
     const int previousItem = menu.getSelected();
-    menu.tick(handPresent, handX, handY);
+    menu.tick(handPresent, handX, handY, handClickPending);
+    handClickPending = false;
     const MenuSound sound = menuSoundForTransition(previousScreen, previousItem,
         menu.getScreen(), menu.getSelected(), previousHandPresent, handPresent);
     previousHandPresent = handPresent;
@@ -169,6 +264,8 @@ void Screen1View::handleTickEvent()
 
     const int screen = menu.getScreen();
     const bool inMenu = (screen >= 0);
+    presenter->setCarouselLED(menu.getAngle(),
+        inMenu ? 0U : (uint8_t)(255.0f * menu.getVisibility()));
 
     /* --- logo: some quando o carrossel assume, e fica escondido enquanto
        houver menu aberto.
@@ -306,6 +403,10 @@ void Screen1View::handleTickEvent()
     /* --- borda: respira ao entrar ou sair de um menu --- */
     {
         int ev = menu.takeNavEvent();
+        if (ev == 1)
+        {
+            presenter->pulseMenuEnterLED();
+        }
         if (ev != 0)
         {
             /* entrar usa pulso mais forte que sair: com a mesma intensidade

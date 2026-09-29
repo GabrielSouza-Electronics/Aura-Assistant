@@ -25,7 +25,8 @@ typedef enum
     APP_INIT_LCD_BACKLIGHT_ERROR,
     APP_INIT_LED_BSP_ERROR,
     APP_INIT_LED_FILL_ERROR,
-    APP_INIT_LED_TRANSFER_ERROR
+    APP_INIT_LED_TRANSFER_ERROR,
+    APP_INIT_WAITING_FOR_TOF
 } APP_InitStatus_t;
 
 typedef struct
@@ -186,6 +187,12 @@ extern volatile APP_WiFiDiagnostics_t app_wifi_diagnostics;
 
 void APP_Init(void);
 void APP_LEDTask(void);
+/* Normalized Hero breath (0..255), published by the UI task. */
+void APP_LED_SetHeroBreath(uint8_t level);
+/* One turn = 65536 phase units; visibility 0 restores the idle breath. */
+void APP_LED_SetCarousel(uint16_t phase, uint8_t visibility);
+/* UI-task entry confirmation; one brief brightness dip, never fully off. */
+void APP_LED_MenuEnterPulse(void);
 void APP_PowerTask(void);
 void APP_SensorTask(void);
 void APP_SystemTask(void);
@@ -196,5 +203,8 @@ const int16_t *APP_AudioRecording_Get(size_t *sample_count,
                                       uint32_t *sample_rate_hz);
 APP_InitStatus_t APP_GetInitStatus(void);
 void APP_DisplayDiagnosticsPoll(void);
+/* UI-task request after the splash finishes; release occurs after rendering. */
+void APP_DisplayStartupComplete(void);
+void APP_DisplayFramePresented(void);
 
 #endif
