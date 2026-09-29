@@ -1,0 +1,53 @@
+/* ====================================================================
+ *  Cole no setupScreen(), DEPOIS da chamada a InitialViewBase.
+ *  Gerado por gen_setup.py — posicoes ja rotacionadas 90 a esquerda.
+ *
+ *  Crie os widgets no Designer com estes nomes, em qualquer posicao;
+ *  este codigo coloca cada um no lugar. Para posicionar algum no
+ *  Designer em vez de aqui, apague a linha dele.
+ * ==================================================================== */
+
+    /* --- fundo e borda: cobrem a tela inteira --- */
+    board.setXY(0, 0);
+    rimGlow.setXY(0, 0);
+    rimGlow.setAlpha(140);
+
+    /* --- logo da tela de espera --- */
+    hero.setXY(78, 139);
+
+    /* --- icones do carrossel ---
+       Posicao inicial, no angulo zero. O codigo do handleTickEvent
+       reposiciona a cada frame conforme o carrossel gira. */
+    icon0.setXY(254, 215);   /* settings */
+    icon1.setXY(222, 31);   /* tasks */
+    icon2.setXY(171, 131);   /* reminders */
+    icon3.setXY(171, 299);   /* calendar */
+    icon4.setXY(222, 399);   /* chat */
+
+    /* --- anel de selecao: acompanha o item selecionado --- */
+    selRing.setXY(236, 197);
+    selRing.setAlpha(0);
+
+    /* --- rotulo da opcao. O codigo troca a imagem e recentra,
+       porque cada palavra tem comprimento diferente. --- */
+    lblOption.setXY(358, 194);
+
+    /* --- divisor --- */
+    divLine.setXY(314, 109);
+    divSpark.setXY(305, 226);
+
+    /* --- mensagem de estado --- */
+    msgState.setXY(410, 169);
+
+    /* --- barra de status: os tres alinhados no mesmo eixo ---
+       No sistema girado eles ficam empilhados na vertical, do lado
+       esquerdo da tela do Designer. */
+    logoStatus.setXY(20, 217);
+    wifiIcon.setXY(31, 283);
+    battFrame.setXY(34, 176);
+
+    /* preenchimento da bateria: cresce na VERTICAL porque a tela
+       esta girada. O applyStatus() ajusta altura e cor. */
+    battFill.setPosition(38, 180, 9, 24);
+
+    applyStatus();

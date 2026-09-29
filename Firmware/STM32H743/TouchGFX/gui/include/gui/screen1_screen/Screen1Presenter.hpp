@@ -24,6 +24,8 @@ public:
      * (ie. made inactive). Teardown functionality can be placed here.
      */
     virtual void deactivate();
+    virtual void handUpdated(bool present, float x, float y);
+    void playMenuSound(MenuSound sound);
 
     virtual ~Screen1Presenter() {}
 

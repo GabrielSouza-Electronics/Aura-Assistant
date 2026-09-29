@@ -3,57 +3,193 @@
     "Screens": [
       {
         "Name": "Screen1",
-        "CanvasBufferSize": 7200,
         "Components": [
           {
             "Type": "Box",
-            "Name": "Background",
+            "Name": "bg",
             "Width": 480,
             "Height": 480
           },
           {
-            "Type": "AnimatedImage",
-            "Name": "animatedImage1",
+            "Type": "Image",
+            "Name": "board",
             "Width": 480,
             "Height": 480,
-            "FileNameFirst": "circ_carousel.png",
-            "FileNameLast": "circ_standby.png",
-            "UpdateTicksInterval": 3000,
+            "RelativeFilename": "aura\\circuit\\board.png"
+          },
+          {
+            "Type": "AnimatedImage",
+            "Name": "hero",
+            "X": 78,
+            "Y": 139,
+            "Width": 200,
+            "Height": 200,
+            "FileNameFirst": "aura\\hero\\hero_00.png",
+            "FileNameLast": "aura\\hero\\hero_23.png",
+            "UpdateTicksInterval": 20,
             "StartOnLoad": true,
             "LoopEnabled": true
           },
           {
-            "Type": "Circle",
-            "Name": "Ring",
-            "Width": 480,
-            "Height": 480,
-            "Color": {
-              "Red": 98,
-              "Green": 211,
-              "Blue": 238
-            },
-            "CenterX": 240.0,
-            "CenterY": 240.0,
-            "Radius": 238.0,
-            "LineWidth": 2.0,
-            "EndAngle": 360.0,
-            "CapPrecision": "Butt"
+            "Type": "Image",
+            "Name": "icon0",
+            "X": 254,
+            "Y": 215,
+            "Width": 48,
+            "Height": 48,
+            "RelativeFilename": "aura\\icons\\settings_48.png"
           },
           {
-            "Type": "TextArea",
-            "Name": "textArea1",
-            "X": 68,
-            "Y": 163,
-            "Width": 60,
-            "Height": 155,
-            "TextId": "__SingleUse_GT20",
-            "TextRotation": "270",
+            "Type": "Image",
+            "Name": "icon1",
+            "X": 222,
+            "Y": 31,
+            "Width": 48,
+            "Height": 48,
+            "RelativeFilename": "aura\\icons\\tasks_48.png"
+          },
+          {
+            "Type": "Image",
+            "Name": "icon2",
+            "X": 171,
+            "Y": 131,
+            "Width": 48,
+            "Height": 48,
+            "RelativeFilename": "aura\\icons\\reminders_48.png"
+          },
+          {
+            "Type": "Image",
+            "Name": "icon3",
+            "X": 171,
+            "Y": 299,
+            "Width": 48,
+            "Height": 48,
+            "RelativeFilename": "aura\\icons\\calendar_48.png"
+          },
+          {
+            "Type": "Image",
+            "Name": "icon4",
+            "X": 222,
+            "Y": 399,
+            "Width": 48,
+            "Height": 48,
+            "RelativeFilename": "aura\\icons\\chat_48.png"
+          },
+          {
+            "Type": "Image",
+            "Name": "selRing",
+            "X": 236,
+            "Y": 197,
+            "Width": 84,
+            "Height": 84,
+            "RelativeFilename": "aura\\ring\\ring_idle.png"
+          },
+          {
+            "Type": "Image",
+            "Name": "lblOption",
+            "X": 358,
+            "Y": 194,
+            "Width": 29,
+            "Height": 91,
+            "RelativeFilename": "aura\\text\\lbl_tasks.png"
+          },
+          {
+            "Type": "Image",
+            "Name": "divLine",
+            "X": 314,
+            "Y": 109,
+            "Width": 9,
+            "Height": 260,
+            "RelativeFilename": "aura\\divider\\line.png"
+          },
+          {
+            "Type": "AnimatedImage",
+            "Name": "divSpark",
+            "X": 305,
+            "Y": 226,
+            "Width": 26,
+            "Height": 26,
+            "FileNameFirst": "aura\\divider\\spark_00.png",
+            "FileNameLast": "aura\\divider\\spark_13.png",
+            "UpdateTicksInterval": 20,
+            "StartOnLoad": true,
+            "LoopEnabled": true
+          },
+          {
+            "Type": "Image",
+            "Name": "msgState",
+            "X": 410,
+            "Y": 169,
+            "Width": 17,
+            "Height": 140,
+            "RelativeFilename": "aura\\text\\msg_hold.png"
+          },
+          {
+            "Type": "Image",
+            "Name": "logoStatus",
+            "X": 20,
+            "Y": 217,
+            "Width": 44,
+            "Height": 44,
+            "RelativeFilename": "aura\\logo\\logo_00.png"
+          },
+          {
+            "Type": "Image",
+            "Name": "wifiIcon",
+            "X": 31,
+            "Y": 283,
+            "Width": 22,
+            "Height": 22,
+            "RelativeFilename": "aura\\status\\wifi_3.png"
+          },
+          {
+            "Type": "Box",
+            "Name": "battFill",
+            "X": 38,
+            "Y": 180,
+            "Width": 9,
+            "Height": 24,
             "Color": {
-              "Red": 255,
-              "Green": 255,
+              "Red": 86,
+              "Green": 210,
               "Blue": 255
-            },
-            "AutoSize": true
+            }
+          },
+          {
+            "Type": "Image",
+            "Name": "battFrame",
+            "X": 35,
+            "Y": 176,
+            "Width": 15,
+            "Height": 30,
+            "RelativeFilename": "aura\\status\\batt_frame.png"
+          },
+          {
+            "Type": "Image",
+            "Name": "rimGlow",
+            "Y": -1,
+            "Width": 480,
+            "Height": 480,
+            "RelativeFilename": "aura\\rim\\rim.png",
+            "Alpha": 140
+          },
+          {
+            "Type": "Image",
+            "Name": "sbReady",
+            "X": 273,
+            "Y": 178,
+            "Width": 39,
+            "Height": 121,
+            "RelativeFilename": "aura\\text\\sb_ready.png"
+          },
+          {
+            "Type": "Image",
+            "Name": "sbWave",
+            "X": 340,
+            "Y": 172,
+            "Width": 17,
+            "Height": 134,
+            "RelativeFilename": "aura\\text\\sb_wave.png"
           }
         ],
         "Interactions": []

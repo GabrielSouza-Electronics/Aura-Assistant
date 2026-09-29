@@ -8,10 +8,8 @@
 #include <mvp/View.hpp>
 #include <gui/screen1_screen/Screen1Presenter.hpp>
 #include <touchgfx/widgets/Box.hpp>
+#include <touchgfx/widgets/Image.hpp>
 #include <touchgfx/widgets/AnimatedImage.hpp>
-#include <touchgfx/widgets/canvas/Circle.hpp>
-#include <touchgfx/widgets/canvas/PainterRGB565.hpp>
-#include <touchgfx/widgets/TextArea.hpp>
 
 class Screen1ViewBase : public touchgfx::View<Screen1Presenter>
 {
@@ -29,19 +27,28 @@ protected:
      * Member Declarations
      */
     touchgfx::Box __background;
-    touchgfx::Box Background;
-    touchgfx::AnimatedImage animatedImage1;
-    touchgfx::Circle Ring;
-    touchgfx::PainterRGB565 RingPainter;
-    touchgfx::TextArea textArea1;
+    touchgfx::Box bg;
+    touchgfx::Image board;
+    touchgfx::AnimatedImage hero;
+    touchgfx::Image icon0;
+    touchgfx::Image icon1;
+    touchgfx::Image icon2;
+    touchgfx::Image icon3;
+    touchgfx::Image icon4;
+    touchgfx::Image selRing;
+    touchgfx::Image lblOption;
+    touchgfx::Image divLine;
+    touchgfx::AnimatedImage divSpark;
+    touchgfx::Image msgState;
+    touchgfx::Image logoStatus;
+    touchgfx::Image wifiIcon;
+    touchgfx::Box battFill;
+    touchgfx::Image battFrame;
+    touchgfx::Image rimGlow;
+    touchgfx::Image sbReady;
+    touchgfx::Image sbWave;
 
 private:
-
-    /*
-     * Canvas Buffer Size
-     */
-    static const uint32_t CANVAS_BUFFER_SIZE = 7200;
-    uint8_t canvasBuffer[CANVAS_BUFFER_SIZE];
 
 };
 

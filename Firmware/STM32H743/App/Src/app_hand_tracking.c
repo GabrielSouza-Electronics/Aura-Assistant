@@ -1,6 +1,8 @@
 #include "app_hand_tracking.h"
 
 #include <stddef.h>
+#include "FreeRTOS.h"
+#include "task.h"
 
 #define APP_HAND_AXIS_LIMIT              10
 #define APP_HAND_DEAD_ZONE               1
@@ -21,6 +23,49 @@
 static const int8_t app_hand_axis_coordinates[4] = {-10, -3, 3, 10};
 static bool app_hand_filter_initialized;
 
+/* Published only after a complete frame; the GUI never reads partially
+ * updated diagnostic fields. Three periods of the current 5 Hz sensor. */
+#define APP_HAND_POINTER_TIMEOUT_MS 600U
+static struct
+{
+    TickType_t tick;
+    int8_t x;
+    int8_t y;
+    bool pressed;
+} app_hand_pointer;
+
+static void APP_HandTracking_PublishPointer(void)
+{
+    taskENTER_CRITICAL();
+    app_hand_pointer.x = app_hand_tracking.x;
+    app_hand_pointer.y = app_hand_tracking.y;
+    app_hand_pointer.pressed = app_hand_tracking.hand_active &&
+                              (app_hand_tracking.lost_frame_count == 0U);
+    app_hand_pointer.tick = xTaskGetTickCount();
+    taskEXIT_CRITICAL();
+}
+
+bool APP_HandTracking_ReadPointer(int8_t *x, int8_t *y)
+{
+    bool pressed;
+    if ((x == NULL) || (y == NULL))
+    {
+        return false;
+    }
+
+    taskENTER_CRITICAL();
+    pressed = app_hand_pointer.pressed &&
+        ((TickType_t)(xTaskGetTickCount() - app_hand_pointer.tick) <
+         pdMS_TO_TICKS(APP_HAND_POINTER_TIMEOUT_MS));
+    if (pressed)
+    {
+        *x = app_hand_pointer.x;
+        *y = app_hand_pointer.y;
+    }
+    taskEXIT_CRITICAL();
+    return pressed;
+}
+
 volatile APP_HandTracking_t app_hand_tracking = {
     .magic = 0x48414E44U, /* "HAND" */
     .status = APP_HAND_STATUS_NO_PERSON,
@@ -29,6 +74,9 @@ volatile APP_HandTracking_t app_hand_tracking = {
     .z_mm = APP_HAND_NO_TARGET_Z_MM,
     .raw_z_mm = APP_HAND_NO_TARGET_Z_MM
 };
+
+volatile int32_t tof_x;
+volatile int32_t tof_y;
 
 static int8_t APP_HandTracking_ClampAxis(int32_t value)
 {
@@ -113,6 +161,8 @@ static void APP_HandTracking_PublishNoTarget(void)
     app_hand_tracking.confidence_percent = 0U;
     app_hand_tracking.position_direction = APP_HAND_DIRECTION_CENTER;
     app_hand_tracking.movement_direction = APP_HAND_DIRECTION_CENTER;
+    tof_x = 0;
+    tof_y = 0;
 }
 
 void APP_HandTracking_Reset(void)
@@ -121,6 +171,7 @@ void APP_HandTracking_Reset(void)
     app_hand_tracking.update_count = 0U;
     app_hand_tracking.lost_frame_count = APP_HAND_LOST_FRAME_HOLD_COUNT;
     APP_HandTracking_PublishNoTarget();
+    APP_HandTracking_PublishPointer();
 }
 
 void APP_HandTracking_Process(const BSP_TOF_Data_t *tof_data)
@@ -156,6 +207,7 @@ void APP_HandTracking_Process(const BSP_TOF_Data_t *tof_data)
     {
         APP_HandTracking_PublishNoTarget();
         ++app_hand_tracking.update_count;
+        APP_HandTracking_PublishPointer();
         return;
     }
 
@@ -201,6 +253,7 @@ void APP_HandTracking_Process(const BSP_TOF_Data_t *tof_data)
     {
         APP_HandTracking_PublishNoTarget();
         ++app_hand_tracking.update_count;
+        APP_HandTracking_PublishPointer();
         return;
     }
 
@@ -248,18 +301,24 @@ void APP_HandTracking_Process(const BSP_TOF_Data_t *tof_data)
     app_hand_tracking.person_present =
         (app_hand_tracking.z_mm <= APP_HAND_PRESENCE_DISTANCE_MM);
     app_hand_tracking.hand_active =
-        (app_hand_tracking.z_mm < APP_HAND_ACTIVE_DISTANCE_MM);
+        (raw_z < APP_HAND_ACTIVE_DISTANCE_MM);
     if (app_hand_tracking.hand_active)
     {
         app_hand_tracking.status = APP_HAND_STATUS_HAND_ACTIVE;
+        tof_x = app_hand_tracking.x;
+        tof_y = app_hand_tracking.y;
     }
     else if (app_hand_tracking.person_present)
     {
         app_hand_tracking.status = APP_HAND_STATUS_PERSON_NEAR;
+        tof_x = 0;
+        tof_y = 0;
     }
     else
     {
         app_hand_tracking.status = APP_HAND_STATUS_NO_PERSON;
+        tof_x = 0;
+        tof_y = 0;
     }
     app_hand_tracking.position_direction =
         APP_HandTracking_GetDirection(app_hand_tracking.x, app_hand_tracking.y);
@@ -271,14 +330,12 @@ void APP_HandTracking_Process(const BSP_TOF_Data_t *tof_data)
         const uint8_t abs_x = (uint8_t)((app_hand_tracking.x < 0)
                                             ? -app_hand_tracking.x
                                             : app_hand_tracking.x);
-        const uint8_t abs_y = (uint8_t)((app_hand_tracking.y < 0)
-                                            ? -app_hand_tracking.y
-                                            : app_hand_tracking.y);
         app_hand_tracking.menu_speed = app_hand_tracking.hand_active
-                                           ? ((abs_x > abs_y) ? abs_x : abs_y)
+                                           ? abs_x
                                            : 0U;
     }
 
     app_hand_tracking.lost_frame_count = 0U;
     ++app_hand_tracking.update_count;
+    APP_HandTracking_PublishPointer();
 }

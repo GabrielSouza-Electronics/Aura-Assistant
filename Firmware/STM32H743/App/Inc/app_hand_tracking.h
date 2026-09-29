@@ -6,6 +6,10 @@
 
 #include "bsp_tof.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef enum
 {
     APP_HAND_STATUS_NO_PERSON = 0,
@@ -36,15 +40,15 @@ typedef struct
     bool person_present;
     bool hand_active;
     int8_t x;
-    int8_t y;
+    int8_t y; /* Filtered -10..10; zero is neutral. */
     uint16_t z_mm;
     int8_t raw_x;
-    int8_t raw_y;
+    int8_t raw_y; /* Oriented sensor centroid, before temporal filtering. */
     uint16_t raw_z_mm;
     int8_t delta_x;
     int8_t delta_y;
     int16_t delta_z_mm;
-    uint8_t menu_speed;
+    uint8_t menu_speed; /* abs(filtered X), 0..10; zero when hand is inactive. */
     uint8_t valid_zone_count;
     uint8_t confidence_percent;
     uint8_t lost_frame_count;
@@ -52,7 +56,22 @@ typedef struct
 
 extern volatile APP_HandTracking_t app_hand_tracking;
 
+/* Filtered debugger coordinates (-10..10); zero when no hand is active. */
+extern volatile int32_t tof_x;
+extern volatile int32_t tof_y;
+
 void APP_HandTracking_Reset(void);
 void APP_HandTracking_Process(const BSP_TOF_Data_t *tof_data);
+
+/* Task-context snapshot for the UI, positive right/up.
+ * X is the filtered -10..10 coordinate: sign sets rotation direction and
+ * magnitude sets speed. Y is filtered -10..10 with zero neutral.
+ * Returns false for release, invalid targets or samples older than 600 ms.
+ * Coordinates are only written while pressed. */
+bool APP_HandTracking_ReadPointer(int8_t *x, int8_t *y);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

@@ -9,7 +9,7 @@
             "origin": "snippet",
             "cwd": "${workspaceFolder}",
             "serverInterface": "SWD",
-            "serverInterfaceFrequency": "1000",
+            "serverInterfaceFrequency": "24000",
             "serverPendingHaltTimeout": "15",
             "faultHaltOnException": true,
             "faultDivByZero": true,

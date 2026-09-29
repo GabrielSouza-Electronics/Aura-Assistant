@@ -1,0 +1,332 @@
+/* =========================================================================
+ *  REFERENCIA — nao copie este arquivo para o projeto
+ *
+ *  Copie os TRECHOS para o seu InitialView.hpp e InitialView.cpp.
+ *  Os widgets (board, hero, icon0..4, selRing, lblOption, divLine,
+ *  divSpark, msgState, logoStatus, wifiIcon, battFrame, battFill, rimGlow)
+ *  vem do Designer e ja existem no InitialViewBase.
+ * ========================================================================= */
+
+
+/* -------------------------------------------------------------------------
+ * TRECHO 1 — InitialView.hpp
+ * ------------------------------------------------------------------------- */
+
+#ifndef INITIALVIEW_HPP
+#define INITIALVIEW_HPP
+
+#include <gui_generated/initial_screen/InitialViewBase.hpp>
+#include <gui/initial_screen/InitialPresenter.hpp>
+
+#include <gui/common/CircuitField.hpp>
+#include <gui/common/MenuLogic.hpp>
+#include <touchgfx/events/ClickEvent.hpp>
+#include <touchgfx/events/DragEvent.hpp>
+
+class InitialView : public InitialViewBase
+{
+public:
+    InitialView();
+    virtual ~InitialView() {}
+    virtual void setupScreen();
+    virtual void tearDownScreen();
+    virtual void handleTickEvent();
+
+    /* teste no simulador sem sensores:
+       segurar = mao presente, arrastar = mover a mao                      */
+    virtual void handleClickEvent(const touchgfx::ClickEvent& evt);
+    virtual void handleDragEvent(const touchgfx::DragEvent& evt);
+
+    /* --- entradas do sistema ------------------------------------------- */
+    void setHand(bool present, float x, float y)
+    {
+        handPresent = present;
+        handX = x;                  /* -1 .. +1 */
+        handY = y;
+    }
+    void setWifiLevel(int lvl);
+    void setBatteryLevel(int pct);
+    void setChargerStatus(bool chg);
+
+protected:
+    CircuitField field;
+    MenuLogic    menu;
+
+    bool  handPresent;
+    float handX, handY;
+    int   wifiLevel;
+    int   battLevel;
+    bool  charging;
+    int   lastScreen;
+
+    void applyStatus();
+};
+
+#endif   /* <-- ultima linha do arquivo. Nao apague. */
+
+
+/* -------------------------------------------------------------------------
+ * TRECHO 2 — InitialView.cpp
+ * ------------------------------------------------------------------------- */
+
+#include <gui/initial_screen/InitialView.hpp>
+#include <BitmapDatabase.hpp>
+#include <touchgfx/Color.hpp>
+
+using namespace touchgfx;
+
+/* Posicoes fixas, em coordenadas JA ROTACIONADAS. Sao as mesmas da tabela
+   do LEIA-ME; se voce mover um widget no Designer, ajuste aqui tambem
+   apenas se o codigo o reposiciona (os icones e o anel).                  */
+static const int16_t LBL_CY   = 239;   /* centro vertical dos rotulos      */
+static const int16_t LBL_CX   = 372;   /* rotulo do carrossel              */
+static const int16_t LBL_MENU = 236;   /* titulo do menu aberto            */
+static const int16_t MSG_CX   = 418;
+
+/* rotulos: id, largura, altura (as imagens estao giradas, entao a largura
+   do PNG e a altura do texto)                                             */
+static const uint16_t LBL_ID[5] = {
+    BITMAP_LBL_SETTINGS_ID, BITMAP_LBL_TASKS_ID, BITMAP_LBL_REMINDERS_ID,
+    BITMAP_LBL_CALENDAR_ID, BITMAP_LBL_CHAT_ID
+};
+static const int16_t LBL_W[5] = { 29, 29, 29, 29, 29 };    /* girado */
+static const int16_t LBL_H[5] = { 135, 91, 157, 146, 79 };
+
+static const uint16_t MSG_ID[3] = {
+    BITMAP_MSG_HOLD_ID, BITMAP_MSG_CANCELLED_ID, BITMAP_MSG_MOVE_ID
+};
+static const int16_t MSG_H[3] = { 140, 99, 167 };
+
+static const uint16_t WIFI_ID[4] = {
+    BITMAP_WIFI_0_ID, BITMAP_WIFI_1_ID, BITMAP_WIFI_2_ID, BITMAP_WIFI_3_ID
+};
+
+static const uint16_t ICON_ID[5][3] = {
+    { BITMAP_SETTINGS_36_ID,  BITMAP_SETTINGS_48_ID,  BITMAP_SETTINGS_64_ID  },
+    { BITMAP_TASKS_36_ID,     BITMAP_TASKS_48_ID,     BITMAP_TASKS_64_ID     },
+    { BITMAP_REMINDERS_36_ID, BITMAP_REMINDERS_48_ID, BITMAP_REMINDERS_64_ID },
+    { BITMAP_CALENDAR_36_ID,  BITMAP_CALENDAR_48_ID,  BITMAP_CALENDAR_64_ID  },
+    { BITMAP_CHAT_36_ID,      BITMAP_CHAT_48_ID,      BITMAP_CHAT_64_ID      }
+};
+
+static int16_t iconSlot(int16_t sz)
+{
+    return (sz <= 40) ? 0 : ((sz <= 56) ? 1 : 2);
+}
+
+
+InitialView::InitialView()
+{
+    handPresent = false;
+    handX = handY = 0.0f;
+    wifiLevel = 3;
+    battLevel = 100;
+    charging = false;
+    lastScreen = -1;
+}
+
+void InitialView::setupScreen()
+{
+    InitialViewBase::setupScreen();
+
+    /* O campo de particulas entra logo DEPOIS do fundo da placa: fica sobre
+       ela e sob todo o resto. insert() evita ter que reordenar a pilha de
+       widgets no Designer.                                               */
+    field.setPosition(0, 0, 480, 480);
+    insert(&board, field);
+
+    applyStatus();
+}
+
+void InitialView::tearDownScreen()
+{
+    InitialViewBase::tearDownScreen();
+}
+
+void InitialView::setWifiLevel(int lvl)
+{
+    int v = (lvl < 0) ? 0 : ((lvl > 3) ? 3 : lvl);
+    if (v != wifiLevel) { wifiLevel = v; applyStatus(); }
+}
+
+void InitialView::setBatteryLevel(int pct)
+{
+    int v = (pct < 0) ? 0 : ((pct > 100) ? 100 : pct);
+    if (v != battLevel) { battLevel = v; applyStatus(); }
+}
+
+void InitialView::setChargerStatus(bool chg)
+{
+    if (chg != charging) { charging = chg; applyStatus(); }
+}
+
+void InitialView::applyStatus()
+{
+    wifiIcon.setBitmap(Bitmap(WIFI_ID[wifiLevel]));
+    wifiIcon.invalidate();
+
+    /* A bateria esta girada: o preenchimento cresce na VERTICAL.
+       Cor troca em tres limiares, nao dois: o aviso chega antes de o
+       usuario precisar agir.                                            */
+    battFill.invalidate();
+    int h = (24 * battLevel) / 100;
+    battFill.setHeight((int16_t)h);
+    battFill.setY((int16_t)(180 + (24 - h)));
+    if (charging)
+        battFill.setColor(Color::getColorFromRGB(0x78, 0xF5, 0xA5));
+    else if (battLevel <= 12)
+        battFill.setColor(Color::getColorFromRGB(0xFF, 0x60, 0x60));
+    else if (battLevel <= 30)
+        battFill.setColor(Color::getColorFromRGB(0xFF, 0xB2, 0x40));
+    else
+        battFill.setColor(Color::getColorFromRGB(0x56, 0xD2, 0xFF));
+    battFill.invalidate();
+}
+
+void InitialView::handleTickEvent()
+{
+    menu.tick(handPresent, handX, handY);
+
+    /* a esfera acompanha o carrossel com fator MENOR. Girando junto, ela e
+       os icones formariam um bloco rigido; a diferenca de velocidade e o
+       que da a leitura de duas camadas.                                  */
+    field.tick(menu.getVisibility(), -menu.getAngle() * 0.45f * 57.2958f);
+
+    const int screen = menu.getScreen();
+    const bool inMenu = (screen >= 0);
+
+    /* --- logo: some quando o carrossel assume --- */
+    {
+        uint8_t a = (uint8_t)(255 * (1.0f - menu.getVisibility()));
+        if (a != hero.getAlpha())
+        {
+            hero.setAlpha(a);
+            hero.invalidate();
+        }
+    }
+
+    /* --- icones do carrossel --- */
+    touchgfx::Image* ic[5] = { &icon0, &icon1, &icon2, &icon3, &icon4 };
+    for (int i = 0; i < 5; i++)
+    {
+        int16_t cx, cy, sz;
+        uint8_t al;
+        menu.getIconPose(i, cx, cy, sz, al);
+
+        ic[i]->invalidate();
+        uint16_t id = ICON_ID[i][iconSlot(sz)];
+        if (Bitmap(id).getId() != ic[i]->getBitmap())
+        {
+            ic[i]->setBitmap(Bitmap(id));
+        }
+        ic[i]->setXY((int16_t)(cx - sz / 2), (int16_t)(cy - sz / 2));
+        ic[i]->setAlpha(al);
+        ic[i]->invalidate();
+    }
+
+    /* --- anel do item selecionado --- */
+    {
+        int st = menu.getDwellStage();
+        int sel = menu.getSelected();
+        int16_t cx, cy, sz;
+        uint8_t al;
+        menu.getIconPose(sel, cx, cy, sz, al);
+
+        selRing.invalidate();
+        if (al > 90 && !inMenu)
+        {
+            uint16_t rid = (st >= 0)
+                         ? (uint16_t)(BITMAP_RING_00_ID + st)
+                         : BITMAP_RING_IDLE_ID;
+            selRing.setBitmap(Bitmap(rid));
+            selRing.setXY((int16_t)(cx - 42), (int16_t)(cy - 42));
+            selRing.setAlpha((uint8_t)(255 * menu.getVisibility()));
+        }
+        else
+        {
+            selRing.setAlpha(0);
+        }
+        selRing.invalidate();
+    }
+
+    /* --- rotulo e mensagem --- */
+    {
+        int sel = inMenu ? screen : menu.getSelected();
+        uint8_t a = inMenu ? 255 : (uint8_t)(255 * menu.getVisibility());
+
+        lblOption.invalidate();
+        lblOption.setBitmap(Bitmap(LBL_ID[sel]));
+        lblOption.setXY((int16_t)((inMenu ? LBL_MENU : LBL_CX) - LBL_W[sel] / 2),
+                        (int16_t)(LBL_CY - LBL_H[sel] / 2));
+        lblOption.setAlpha(a);
+        lblOption.invalidate();
+
+        int m = inMenu ? 3 : menu.getStateMsg();
+        msgState.invalidate();
+        if (m < 3)
+        {
+            msgState.setBitmap(Bitmap(MSG_ID[m]));
+            msgState.setXY((int16_t)(MSG_CX - 8),
+                           (int16_t)(LBL_CY - MSG_H[m] / 2));
+            msgState.setAlpha((uint8_t)(170 * menu.getVisibility()));
+        }
+        else
+        {
+            msgState.setBitmap(Bitmap(BITMAP_MSG_BACK_ID));
+            msgState.setXY((int16_t)(MSG_CX - 8), (int16_t)(LBL_CY - 205 / 2));
+            msgState.setAlpha(160);
+        }
+        msgState.invalidate();
+    }
+
+    /* --- divisor: some junto com o carrossel --- */
+    {
+        uint8_t a = inMenu ? 190 : (uint8_t)(190 * menu.getVisibility());
+        if (a != divLine.getAlpha())
+        {
+            divLine.setAlpha(a);
+            divSpark.setAlpha(a);
+            divLine.invalidate();
+            divSpark.invalidate();
+        }
+    }
+
+    /* --- borda: respira ao entrar ou sair de um menu --- */
+    {
+        int ev = menu.takeNavEvent();
+        if (ev != 0)
+        {
+            /* entrar usa pulso mais forte que sair: com a mesma intensidade
+               os dois eventos ficariam indistinguiveis                    */
+            rimGlow.setAlpha((ev == 1) ? 255 : 200);
+            rimGlow.invalidate();
+        }
+        else
+        {
+            uint8_t a = rimGlow.getAlpha();
+            if (a > 140)
+            {
+                rimGlow.setAlpha((uint8_t)(a - ((a - 140) / 8 + 1)));
+                rimGlow.invalidate();
+            }
+        }
+    }
+
+    lastScreen = screen;
+}
+
+void InitialView::handleClickEvent(const touchgfx::ClickEvent& evt)
+{
+    bool down = (evt.getType() == touchgfx::ClickEvent::PRESSED);
+    /* o display esta girado: o X da tela corresponde ao Y da cena */
+    setHand(down,
+            (240 - evt.getY()) / 240.0f,
+            (evt.getX() - 240) / 240.0f);
+}
+
+void InitialView::handleDragEvent(const touchgfx::DragEvent& evt)
+{
+    setHand(true,
+            (240 - evt.getNewY()) / 240.0f,
+            (evt.getNewX() - 240) / 240.0f);
+}

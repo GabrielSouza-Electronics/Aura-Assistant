@@ -1,0 +1,4 @@
+build/MINGW32_NT-6.2/generated/images/src/aura/ring/image_arrow_down.o: \
+ generated/images/src/aura/ring/image_arrow_down.cpp \
+ ../Middlewares/ST/touchgfx/framework/include/touchgfx/hal/Config.hpp
+../Middlewares/ST/touchgfx/framework/include/touchgfx/hal/Config.hpp:

@@ -1,6 +1,7 @@
 #include "app.h"
 
 #include "app_hand_tracking.h"
+#include "app_ui_audio.h"
 #include "audio_dsp.h"
 #include "bsp_flash.h"
 #include "bsp_lcd.h"
@@ -508,10 +509,7 @@ void APP_AudioOutputTask(void)
             ++app_audio_out_diagnostics.error_count;
         }
     }
-    for (;;)
-    {
-        osDelay(1000U);
-    }
+    APP_UIAudio_Run();
 #endif
 }
 

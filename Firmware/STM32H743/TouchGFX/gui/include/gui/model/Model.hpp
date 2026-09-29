@@ -1,5 +1,6 @@
 #ifndef MODEL_HPP
 #define MODEL_HPP
+#include <gui/common/MenuSound.hpp>
 
 class ModelListener;
 
@@ -14,6 +15,7 @@ public:
     }
 
     void tick();
+    void playMenuSound(MenuSound sound);
 protected:
     ModelListener* modelListener;
 };

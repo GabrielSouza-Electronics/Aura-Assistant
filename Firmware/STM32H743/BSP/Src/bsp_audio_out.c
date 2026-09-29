@@ -23,6 +23,7 @@ static volatile bool bsp_audio_out_keep_enabled;
 static volatile uint32_t bsp_audio_out_last_hal_error;
 static volatile bool bsp_audio_out_echo_stream;
 static volatile bool bsp_audio_out_pcm_stream;
+static volatile bool bsp_audio_out_effect;
 static volatile uint8_t bsp_audio_out_pcm_end_half;
 static volatile uint8_t bsp_audio_out_volume = 5U;
 static const int16_t *bsp_audio_out_pcm_source;
@@ -182,6 +183,7 @@ BSP_AUDIO_OUT_Status_t BSP_AUDIO_OUT_Init(void)
     bsp_audio_out_last_hal_error = HAL_I2S_ERROR_NONE;
     bsp_audio_out_echo_stream = false;
     bsp_audio_out_pcm_stream = false;
+    bsp_audio_out_effect = false;
     bsp_audio_out_pcm_end_half = 0xFFU;
     bsp_audio_out_echo_writable = 0U;
     bsp_audio_out_echo_underruns = 0U;
@@ -321,6 +323,65 @@ uint32_t BSP_AUDIO_OUT_GetEchoUnderrunCount(void)
     return bsp_audio_out_echo_underruns;
 }
 
+BSP_AUDIO_OUT_Status_t BSP_AUDIO_OUT_PlayEffect48kMono(
+    const int16_t *pcm_mono, size_t sample_count)
+{
+    if (pcm_mono == NULL || sample_count == 0U ||
+        sample_count > BSP_AUDIO_OUT_STEREO_SAMPLES / 2U)
+        return BSP_AUDIO_OUT_ERROR_INVALID_ARGUMENT;
+    if (bsp_audio_out_busy && !bsp_audio_out_effect)
+        return BSP_AUDIO_OUT_ERROR_BUSY;
+
+    /* Stop DMA before touching its buffer; restarting always begins at sample 0. */
+    if (HAL_I2S_DMAStop(&hi2s1) != HAL_OK)
+    {
+        /* HAL_DMA_Abort reports NO_XFER on an already idle stream (e.g. after
+         * welcome or a completed effect). DMAStop still disables I2S and
+         * restores its READY state. Only that specific idle case is benign. */
+        if (HAL_DMA_GetState(hi2s1.hdmatx) != HAL_DMA_STATE_READY ||
+            HAL_DMA_GetError(hi2s1.hdmatx) != HAL_DMA_ERROR_NO_XFER)
+        {
+            bsp_audio_out_last_hal_error = hi2s1.ErrorCode;
+            return BSP_AUDIO_OUT_ERROR_DMA;
+        }
+    }
+    bsp_audio_out_busy = false;
+    bsp_audio_out_effect = false;
+    bsp_audio_out_pcm_stream = false;
+    bsp_audio_out_dma_error = false;
+    bsp_audio_out_last_hal_error = HAL_I2S_ERROR_NONE;
+    if (hi2s1.hdmatx->Init.Mode != DMA_NORMAL)
+    {
+        (void)HAL_DMA_DeInit(hi2s1.hdmatx);
+        hi2s1.hdmatx->Init.Mode = DMA_NORMAL;
+        if (HAL_DMA_Init(hi2s1.hdmatx) != HAL_OK)
+            return BSP_AUDIO_OUT_ERROR_DMA_START;
+    }
+    const uint8_t volume = bsp_audio_out_volume;
+    for (size_t i = 0U; i < sample_count; ++i)
+    {
+        const int16_t sample = (int16_t)(((int32_t)pcm_mono[i] * volume) /
+                                       (int32_t)BSP_AUDIO_OUT_MAX_VOLUME);
+        bsp_audio_out_dma_buffer[2U * i] = sample;
+        bsp_audio_out_dma_buffer[2U * i + 1U] = sample;
+    }
+    SCB_CleanDCache_by_Addr((uint32_t *)bsp_audio_out_dma_buffer,
+                           (int32_t)(sample_count * 2U * sizeof(int16_t)));
+    HAL_GPIO_WritePin(I2S_SDMODE_GPIO_Port, I2S_SDMODE_Pin, GPIO_PIN_SET);
+    bsp_audio_out_effect = true;
+    bsp_audio_out_busy = true;
+    if (HAL_I2S_Transmit_DMA(&hi2s1, (uint16_t *)(void *)bsp_audio_out_dma_buffer,
+                           (uint16_t)(2U * sample_count)) != HAL_OK)
+    {
+        bsp_audio_out_effect = false;
+        bsp_audio_out_busy = false;
+        bsp_audio_out_last_hal_error = hi2s1.ErrorCode;
+        HAL_GPIO_WritePin(I2S_SDMODE_GPIO_Port, I2S_SDMODE_Pin, GPIO_PIN_RESET);
+        return BSP_AUDIO_OUT_ERROR_DMA_START;
+    }
+    return BSP_AUDIO_OUT_OK;
+}
+
 BSP_AUDIO_OUT_Status_t BSP_AUDIO_OUT_PlayPCM48kMonoBlocking(
     const int16_t *pcm_mono, size_t sample_count, uint32_t timeout_ms)
 {
@@ -449,6 +510,14 @@ uint32_t BSP_AUDIO_OUT_GetLastHALerror(void)
 
 void BSP_AUDIO_OUT_TransferCompleteCallback(void)
 {
+    if (bsp_audio_out_effect)
+    {
+        (void)HAL_I2S_DMAStop(&hi2s1);
+        bsp_audio_out_effect = false;
+        bsp_audio_out_busy = false;
+        HAL_GPIO_WritePin(I2S_SDMODE_GPIO_Port, I2S_SDMODE_Pin, GPIO_PIN_RESET);
+        return;
+    }
     if (bsp_audio_out_pcm_stream)
     {
         if (bsp_audio_out_pcm_end_half == 1U)

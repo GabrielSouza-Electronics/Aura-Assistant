@@ -42,6 +42,12 @@ add_subdirectory(cmake/stm32cubemx)
 # Add touchgfx generated sources and libraries
 add_subdirectory(cmake/touchgfx)
 
+# The hardware Model reads the application's hand snapshot directly.
+target_include_directories(TouchGFX PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/App/Inc
+    ${CMAKE_CURRENT_SOURCE_DIR}/BSP/Inc
+)
+
 # Link directories setup
 target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user defined library search paths
@@ -81,6 +87,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     # Application
     App/Src/app.c
     App/Src/app_hand_tracking.c
+    App/Src/app_ui_audio.c
     App/Src/app_logging.c
     App/Src/app_wifi.c
 
@@ -105,6 +112,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     Components/VL53L5CX/uld/vl53l5cx_api.c
     Components/WS2812C/ws2812c.c
     Components/Audio/welcome_audio.c
+    Components/Audio/ui_audio.c
     Components/PDM/pdm_decimator.c
     Components/AudioDSP/audio_dsp.c
 )

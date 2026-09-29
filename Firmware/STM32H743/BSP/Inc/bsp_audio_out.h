@@ -32,6 +32,10 @@ BSP_AUDIO_OUT_Status_t BSP_AUDIO_OUT_PlayPCM16kStereoBlocking(
     const int16_t *pcm_stereo, size_t frame_count, uint32_t timeout_ms);
 BSP_AUDIO_OUT_Status_t BSP_AUDIO_OUT_PlayPCM48kMonoBlocking(
     const int16_t *pcm_mono, size_t sample_count, uint32_t timeout_ms);
+/* AudioOutputTask only. Nonblocking, up to 500 ms; restarts an existing effect.
+ * Other playback modes retain ownership and return BUSY. */
+BSP_AUDIO_OUT_Status_t BSP_AUDIO_OUT_PlayEffect48kMono(
+    const int16_t *pcm_mono, size_t sample_count);
 BSP_AUDIO_OUT_Status_t BSP_AUDIO_OUT_StartEchoStream(void);
 BSP_AUDIO_OUT_Status_t BSP_AUDIO_OUT_QueueEchoBlock(
     const int16_t *pcm_stereo, size_t frame_count);
