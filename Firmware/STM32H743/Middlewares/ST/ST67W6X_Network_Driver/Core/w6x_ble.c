@@ -22,6 +22,7 @@
 #include "w6x_api.h"       /* Prototypes of the functions implemented in this file */
 #include "w61_at_api.h"    /* Prototypes of the functions called by this file */
 #include "w6x_internal.h"
+#include "w6x_ble_init_diag.h"
 #include "w61_io.h"        /* Prototypes of the BUS functions to be registered */
 
 /* Global variables ----------------------------------------------------------*/
@@ -63,6 +64,28 @@
   * @{
   */
 static W61_Object_t *W6X_Ble_drv_obj = NULL; /*!< Global W61 context pointer */
+
+volatile W6X_Ble_InitDiagnostics_t w6x_ble_init_diagnostics = {
+  .status = UINT32_MAX, .cleanup_status = UINT32_MAX,
+  .reported_mode = UINT32_MAX, .power_mode = UINT32_MAX,
+  .clock_source = UINT32_MAX
+};
+
+static void W6X_Ble_InitStep(W6X_Ble_InitStep_t step)
+{
+  w6x_ble_init_diagnostics.step = step;
+  w6x_ble_init_diagnostics.status = W6X_STATUS_BUSY;
+  w6x_ble_init_diagnostics.step_started_tick = (uint32_t)xTaskGetTickCount();
+  w6x_ble_init_diagnostics.step_elapsed_ticks = 0U;
+}
+
+static W6X_Status_t W6X_Ble_InitResult(W6X_Status_t status)
+{
+  w6x_ble_init_diagnostics.status = (uint32_t)status;
+  w6x_ble_init_diagnostics.step_elapsed_ticks =
+    (uint32_t)xTaskGetTickCount() - w6x_ble_init_diagnostics.step_started_tick;
+  return status;
+}
 
 #if (W6X_ASSERT_ENABLE == 1)
 /** W6X BLE init error string */
@@ -114,95 +137,82 @@ W6X_Status_t W6X_Ble_Init(W6X_Ble_Mode_e mode, uint8_t *recv_data, size_t max_le
 {
   W6X_Status_t ret = W6X_STATUS_ERROR;
   W6X_App_Cb_t *p_cb_handler;
-  W6X_Ble_Mode_e current_mode;
+  W6X_Ble_Mode_e current_mode = (W6X_Ble_Mode_e)0;
   uint32_t ps_mode = 0;
   uint32_t clock_source = 0;
   char device_name[W6X_BLE_DEVICE_NAME_SIZE + 1] = {0};
 
-  /* Get the global W61 context pointer */
+  w6x_ble_init_diagnostics.requested_mode = (uint32_t)mode;
+  w6x_ble_init_diagnostics.cleanup_status = UINT32_MAX;
+  w6x_ble_init_diagnostics.reported_mode = UINT32_MAX;
+  w6x_ble_init_diagnostics.power_mode = UINT32_MAX;
+  w6x_ble_init_diagnostics.clock_source = UINT32_MAX;
+  W6X_Ble_InitStep(W6X_BLE_INIT_CONTEXT);
   W6X_Ble_drv_obj = W61_ObjGet();
-  NULL_ASSERT(W6X_Ble_drv_obj, W6X_Obj_Null_str);
+  if (W6X_Ble_drv_obj == NULL) { return W6X_Ble_InitResult(W6X_STATUS_ERROR); }
 
-  p_cb_handler = W6X_GetCbHandler(); /* Check that application callback is registered */
+  W6X_Ble_InitStep(W6X_BLE_INIT_CALLBACKS);
+  p_cb_handler = W6X_GetCbHandler();
   if ((p_cb_handler == NULL) || (p_cb_handler->APP_ble_cb == NULL))
   {
     BLE_LOG_ERROR("Please register the APP callback before initializing the module\n");
-    return ret;
+    return W6X_Ble_InitResult(ret);
   }
 
-  ret = W6X_GetPowerMode(&ps_mode);
-  if (ret != W6X_STATUS_OK)
-  {
-    BLE_LOG_ERROR("Get Power Mode failed\n");
-    return ret;
-  }
+  W6X_Ble_InitStep(W6X_BLE_INIT_GET_POWER_MODE);
+  ret = W6X_Ble_InitResult(W6X_GetPowerMode(&ps_mode));
+  if (ret != W6X_STATUS_OK) { return ret; }
+  w6x_ble_init_diagnostics.power_mode = ps_mode;
 
   if (ps_mode == 1U)
   {
-    /* Low Power Mode is enabled */
-    /* Ensure current W61 clock is correctly setup to support BLE in low power */
-    ret = TranslateErrorStatus(W61_GetClockSource(W6X_Ble_drv_obj, &clock_source));
-    if (ret != W6X_STATUS_OK)
-    {
-      BLE_LOG_ERROR("Get W61 clock source failed\n");
-      return ret;
-    }
-
-    /* External oscillator must be used to support BLE in Low Power */
+    W6X_Ble_InitStep(W6X_BLE_INIT_GET_CLOCK_SOURCE);
+    ret = W6X_Ble_InitResult(TranslateErrorStatus(W61_GetClockSource(W6X_Ble_drv_obj, &clock_source)));
+    if (ret != W6X_STATUS_OK) { return ret; }
+    w6x_ble_init_diagnostics.clock_source = clock_source;
     if (clock_source == 1U)
     {
-      BLE_LOG_WARN("External Clock oscillator must be used to support BLE in power save mode\n");
-      ret = W6X_SetPowerMode(0); /* Disable low power */
-      if (ret != W6X_STATUS_OK)
-      {
-        BLE_LOG_ERROR("Disable power save mode failed\n");
-        return ret;
-      }
+      W6X_Ble_InitStep(W6X_BLE_INIT_DISABLE_POWER_SAVE);
+      ret = W6X_Ble_InitResult(W6X_SetPowerMode(0));
+      if (ret != W6X_STATUS_OK) { return ret; }
       BLE_LOG_WARN("Power save disabled!\n");
     }
   }
 
-  /* Register W61 driver callbacks */
-  (void)W61_RegisterULcb(W6X_Ble_drv_obj,
-                         NULL,
-                         NULL,
-                         NULL,
-                         NULL,
-                         W6X_Ble_cb);
+  W6X_Ble_InitStep(W6X_BLE_INIT_REGISTER_CALLBACK);
+  ret = W6X_Ble_InitResult(TranslateErrorStatus(W61_RegisterULcb(W6X_Ble_drv_obj,
+                         NULL, NULL, NULL, NULL, W6X_Ble_cb)));
+  if (ret != W6X_STATUS_OK) { return ret; }
 
-  /* Initialize BLE Data buffer */
-  ret = TranslateErrorStatus(W61_Ble_Init(W6X_Ble_drv_obj, (uint8_t) mode, recv_data, (uint32_t)max_len));
-  if (W6X_STATUS_OK != ret)
+  W6X_Ble_InitStep(W6X_BLE_INIT_SEND_BLEINIT);
+  ret = W6X_Ble_InitResult(TranslateErrorStatus(W61_Ble_Init(W6X_Ble_drv_obj,
+                           (uint8_t)mode, recv_data, (uint32_t)max_len)));
+  if (ret != W6X_STATUS_OK) { goto _err; }
+
+  /* A failed query must not be masked by a later successful name command. */
+  W6X_Ble_InitStep(W6X_BLE_INIT_VERIFY_MODE);
+  ret = W6X_Ble_InitResult(W6X_Ble_GetInitMode(&current_mode));
+  if (ret != W6X_STATUS_OK) { goto _err; }
+  w6x_ble_init_diagnostics.reported_mode = (uint32_t)current_mode;
+  if (current_mode != mode)
   {
+    ret = W6X_Ble_InitResult(W6X_STATUS_ERROR);
     goto _err;
   }
-
-  ret = W6X_Ble_GetInitMode(&current_mode); /* Check if the BLE mode is correctly set */
-  if ((W6X_STATUS_OK == ret) && (current_mode != mode))
-  {
-    ret = W6X_STATUS_ERROR; /* Error: BLE mode not correctly set */
-    goto _err;
-  }
-
-  /* Save the BLE mode */
   W6X_Ble_drv_obj->BleCtx.NetSettings.Mode = (W61_Ble_Mode_e)mode;
 
-  /* Set device name */
   (void)strncpy(device_name, W6X_BLE_HOSTNAME, W6X_BLE_DEVICE_NAME_SIZE);
-  device_name[W6X_BLE_DEVICE_NAME_SIZE] = '\0'; /* Ensure null termination */
-  if (W6X_Ble_SetDeviceName(device_name) != W6X_STATUS_OK)
-  {
-    BLE_LOG_ERROR("Failed to set device name\n");
-    ret = W6X_STATUS_ERROR;
-    goto _err;
-  }
+  device_name[W6X_BLE_DEVICE_NAME_SIZE] = '\0';
+  W6X_Ble_InitStep(W6X_BLE_INIT_SET_NAME);
+  ret = W6X_Ble_InitResult(W6X_Ble_SetDeviceName(device_name));
+  if (ret != W6X_STATUS_OK) { goto _err; }
 
-  /* Update BLE state */
   W6X_Ble_drv_obj->ResetCfg.Ble_status = W61_MODULE_STATE_INIT;
-  return W6X_STATUS_OK;
+  W6X_Ble_InitStep(W6X_BLE_INIT_READY);
+  return W6X_Ble_InitResult(W6X_STATUS_OK);
 
 _err:
-  W6X_Ble_DeInit(); /* Deinitialize BLE in case of failure */
+  W6X_Ble_DeInit();
   return ret;
 }
 
@@ -212,7 +222,9 @@ void W6X_Ble_DeInit(void)
   {
     return; /* Nothing to do */
   }
-  (void)W61_Ble_DeInit(W6X_Ble_drv_obj); /* Deinitialize BLE */
+  /* Cleanup must not overwrite the failed initialization step/result. */
+  w6x_ble_init_diagnostics.cleanup_status =
+    (uint32_t)TranslateErrorStatus(W61_Ble_DeInit(W6X_Ble_drv_obj));
   W6X_Ble_drv_obj->ResetCfg.Ble_status = W61_MODULE_STATE_NOT_INIT; /* Update BLE state */
   W6X_Ble_drv_obj = NULL; /* Reset the global pointer */
 }

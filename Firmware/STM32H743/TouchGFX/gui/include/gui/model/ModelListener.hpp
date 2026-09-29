@@ -11,6 +11,8 @@ public:
     virtual ~ModelListener() {}
     virtual void handUpdated(bool, float, float) {}
     virtual void handClicked() {}
+    /* 0 = no IP (crossed icon), 1..3 = signal bars. Sent only on change. */
+    virtual void wifiLevelUpdated(uint8_t) {}
 
     void bind(Model* m)
     {

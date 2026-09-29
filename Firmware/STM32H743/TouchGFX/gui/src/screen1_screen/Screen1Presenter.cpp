@@ -32,6 +32,11 @@ void Screen1Presenter::handClicked()
     view.requestHandClick();
 }
 
+void Screen1Presenter::wifiLevelUpdated(uint8_t level)
+{
+    view.setWifiLevel(level);
+}
+
 void Screen1Presenter::setHeroBreath(uint8_t level)
 {
     model->setHeroBreath(level);

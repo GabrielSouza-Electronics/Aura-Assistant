@@ -90,6 +90,8 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     App/Src/app_ui_audio.c
     App/Src/app_logging.c
     App/Src/app_wifi.c
+    App/Src/app_provisioning.c
+    App/Src/provision_protocol.c
 
     # Board Support Package
     BSP/Src/bsp_lcd.c

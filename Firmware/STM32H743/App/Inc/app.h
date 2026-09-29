@@ -158,15 +158,25 @@ typedef struct
     uint32_t core_status;
     uint32_t callback_status;
     uint32_t wifi_init_status;
+    uint32_t net_init_status;
+    uint32_t heap_min_free;
     uint32_t wifi_scan_status;
     uint32_t wifi_scan_callback_status;
     uint32_t wifi_ap_count;
     int32_t wifi_best_rssi;
+    int32_t wifi_rssi;          /* connected AP, INT32_MIN when unknown */
+    uint32_t wifi_signal_level; /* 0 = no IP, 1..3 = bars shown on the display */
     uint32_t ble_init_status;
+    uint32_t provision_init_status;
+    uint32_t ble_address_status;
     uint32_t ble_adv_status;
     uint32_t last_wifi_event;
+    uint32_t last_net_event;
     uint32_t last_ble_event;
     uint32_t last_driver_error;
+    uint32_t first_driver_error;
+    const char *first_driver_error_function;
+    const char *last_driver_error_function;
     uint32_t ble_connection_count;
     uint8_t module_mac[6];
     uint8_t module_sdk_version[4];
@@ -199,6 +209,9 @@ void APP_SystemTask(void);
 void APP_AudioOutputTask(void);
 void APP_AudioInputTask(void);
 void APP_WiFiTask(void);
+/* Display signal level: 0 = no IP (crossed icon), 1..3 = bars from RSSI.
+ * Safe to call from any task (single byte read). */
+uint8_t APP_WiFi_GetSignalLevel(void);
 const int16_t *APP_AudioRecording_Get(size_t *sample_count,
                                       uint32_t *sample_rate_hz);
 APP_InitStatus_t APP_GetInitStatus(void);

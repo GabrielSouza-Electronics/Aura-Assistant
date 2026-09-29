@@ -1,0 +1,2 @@
+#define W61_AT_LOG_ENABLE 0
+#define MDM_CMD_LOG_ENABLE 0

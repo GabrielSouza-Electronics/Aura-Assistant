@@ -18,6 +18,9 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "w61_at_common.h"
+#include "w61_adv_diag.h"
+
+volatile W61_AdvDiagnostics w61_adv_diagnostics;
 #include "w61_at_internal.h"
 #include "w61_io.h"
 
@@ -471,13 +474,29 @@ W61_Status_t W61_Status(int32_t ret)
 W61_Status_t W61_AT_Common_SetExecute(W61_Object_t *Obj, uint8_t *p_cmd, uint32_t timeout_ms)
 {
   struct modem *mdm = &Obj->Modem;
-  return W61_Status(modem_cmd_send(&mdm->iface,
+  bool observe_adv = strcmp((const char *)p_cmd, "AT+BLEADVSTART\r\n") == 0;
+  if (observe_adv)
+  {
+    ++w61_adv_diagnostics.attempts;
+    w61_adv_diagnostics.terminal = 0U;
+    w61_adv_diagnostics.error_code_valid = 0U;
+    w61_adv_diagnostics.error_code = 0U;
+    w61_adv_diagnostics.raw_return = INT32_MIN;
+    w61_adv_diagnostics.active = 1U;
+  }
+  int32_t raw_return = modem_cmd_send(&mdm->iface,
                                    &mdm->handler,
                                    NULL,
                                    0,
                                    p_cmd,
                                    mdm->sem_response,
-                                   timeout_ms));
+                                   timeout_ms);
+  if (observe_adv)
+  {
+    w61_adv_diagnostics.active = 0U;
+    w61_adv_diagnostics.raw_return = raw_return;
+  }
+  return W61_Status(raw_return);
 }
 
 W61_Status_t W61_AT_Common_Query_Parse(W61_Object_t *Obj, char *p_cmd, char *p_resp,

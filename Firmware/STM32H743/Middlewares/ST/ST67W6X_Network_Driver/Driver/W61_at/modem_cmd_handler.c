@@ -42,6 +42,7 @@
 #include "semphr.h"
 
 #include "modem_cmd_handler.h"
+#include "w61_adv_diag.h"
 #include "w61_default_config.h"
 #include "logging.h"
 
@@ -569,6 +570,7 @@ static void cmd_handler_process_rx_buf(struct modem_cmd_handler_data *data)
     match_len = (len < data->match_buf_len - 1) ? len : data->match_buf_len - 1;
     (void)memcpy(data->match_buf, data->rx_buf, match_len);
     data->match_buf[match_len] = '\0';
+    W61_AdvObserve(data->match_buf);
 
 #if defined(CONFIG_MODEM_CONTEXT_VERBOSE_DEBUG)
     LOG_HEXDUMP_DBG(data->match_buf, match_len, "RECV");

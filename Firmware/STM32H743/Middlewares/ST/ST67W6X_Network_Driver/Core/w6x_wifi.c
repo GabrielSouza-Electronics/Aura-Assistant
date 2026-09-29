@@ -387,7 +387,7 @@ W6X_Status_t W6X_WiFi_Connect(W6X_WiFi_Connect_Opts_t *connect_opts)
   W6X_App_Cb_t *p_cb_handler = W6X_GetCbHandler();
   NULL_ASSERT(W6X_WiFi_drv_obj, W6X_WiFi_Uninit_str);
   NULL_ASSERT(p_wifi_ctx, W6X_WiFi_Ctx_Null_str);
-  NULL_ASSERT(ConnectOpts, "Invalid connect options");
+  NULL_ASSERT(connect_opts, "Invalid connect options");
 
   if ((p_cb_handler == NULL) || (p_cb_handler->APP_wifi_cb == NULL))
   {
@@ -430,20 +430,18 @@ W6X_Status_t W6X_WiFi_Connect(W6X_WiFi_Connect_Opts_t *connect_opts)
       return ret;
     }
   }
+  /* Aura: arm events before AT; a fast AP can reply before the command returns. */
+  (void)xEventGroupClearBits(p_wifi_ctx->Wifi_event,
+                            eventMask | W6X_WIFI_EVENT_FLAG_GOT_IP);
+  p_wifi_ctx->Expected_event_connect = 1U;
+#if (ST67_ARCH == W6X_ARCH_T01)
+  p_wifi_ctx->Expected_event_gotip = W6X_WiFi_drv_obj->NetCtx.DHCP_STA_IsEnabled == 1U;
+#endif
   /* Start the Wi-Fi connection to the Access Point */
   ret = TranslateErrorStatus(W61_WiFi_Connect(W6X_WiFi_drv_obj, (W61_WiFi_Connect_Opts_t *)connect_opts));
   if (ret == W6X_STATUS_OK)
   {
-    p_wifi_ctx->Expected_event_connect = 1U; /* Enable the expected event for connection */
     WIFI_LOG_DEBUG("NCP is treating the connection request\n");
-
-#if (ST67_ARCH == W6X_ARCH_T01)
-    /* If station is not in static IP mode, GOT_IP event is expected */
-    if (W6X_WiFi_drv_obj->NetCtx.DHCP_STA_IsEnabled == 1U)
-    {
-      p_wifi_ctx->Expected_event_gotip = 1U;
-    }
-#endif /* ST67_ARCH */
 
     /* If WPS, don't check the reason due to PSK Failure unexpected event. No impact on connection */
     if (connect_opts->WPS == 1U)
@@ -505,6 +503,8 @@ W6X_Status_t W6X_WiFi_Connect(W6X_WiFi_Connect_Opts_t *connect_opts)
 #endif /* ST67_ARCH */
   }
 _err:
+  p_wifi_ctx->Expected_event_connect = 0U;
+  p_wifi_ctx->Expected_event_gotip = 0U;
   if ((W6X_WiFi_drv_obj->NetCtx.Supported == 0U) && (W6X_WiFi_drv_obj->Callbacks.Netif_cb.link_ap_up_fn != NULL))
   {
     if (W6X_WiFi_drv_obj->WifiCtx.ApState == W61_WIFI_STATE_AP_RUNNING) /* RESTART AP */
@@ -539,14 +539,22 @@ W6X_Status_t W6X_WiFi_Disconnect(uint32_t restore)
     return ret;
   }
 
-  /* Check if station is connected */
+  /* Aura: also allow canceling a pending connection and erasing saved
+   * credentials while offline. No DISCONNECTED event is owed in that case. */
   if (!((p_wifi_ctx->StaState == W6X_WIFI_STATE_STA_CONNECTED) || (p_wifi_ctx->StaState == W6X_WIFI_STATE_STA_GOT_IP)))
   {
-    WIFI_LOG_ERROR("Device is not in the appropriate state to run this command\n");
+    ret = TranslateErrorStatus(W61_WiFi_Disconnect(W6X_WiFi_drv_obj, restore));
+    if (ret == W6X_STATUS_OK)
+    {
+      p_wifi_ctx->StaState = W6X_WIFI_STATE_STA_DISCONNECTED;
+      p_wifi_ctx->Expected_event_connect = 0U;
+      p_wifi_ctx->Expected_event_gotip = 0U;
+    }
     return ret;
   }
 
   /* Disconnect the Wi-Fi station */
+  (void)xEventGroupClearBits(p_wifi_ctx->Wifi_event, W6X_WIFI_EVENT_FLAG_DISCONNECT);
   p_wifi_ctx->Expected_event_disconnect = 1;
   ret = TranslateErrorStatus(W61_WiFi_Disconnect(W6X_WiFi_drv_obj, restore));
   if (ret == W6X_STATUS_OK)

@@ -26,6 +26,7 @@ public:
     virtual void deactivate();
     virtual void handUpdated(bool present, float x, float y);
     virtual void handClicked() override;
+    virtual void wifiLevelUpdated(uint8_t level) override;
     void playMenuSound(MenuSound sound);
     void setHeroBreath(uint8_t level);
     void setCarouselLED(float angle, uint8_t visibility);

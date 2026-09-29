@@ -130,7 +130,9 @@ extern "C" {
 #define W6X_HTTP_CLIENT_TCP_SOCKET_SIZE         12288
 
 /* USER CODE BEGIN EC */
-
+/* Restore the last successfully provisioned network after a power cycle. */
+#undef W6X_WIFI_AUTOCONNECT
+#define W6X_WIFI_AUTOCONNECT 1
 /* USER CODE END EC */
 
 #ifdef __cplusplus

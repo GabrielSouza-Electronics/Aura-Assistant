@@ -240,6 +240,14 @@ SECTIONS
     . = ALIGN(32);
   } >RAM_D2
 
+  /* CPU-only scratch; APP_ProvisionInit explicitly clears this section. */
+  .provisioning (NOLOAD) :
+  {
+    . = ALIGN(4);
+    *(.provisioning)
+    . = ALIGN(4);
+  } >RAM_D3
+
  
    /* TouchGFX Framebuffer in AXI SRAM D1 */
   TouchGFX_Framebuffer (NOLOAD) :

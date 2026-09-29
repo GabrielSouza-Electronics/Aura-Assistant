@@ -16,7 +16,7 @@ extern "C"
 #include <cstring>
 #endif
 
-Model::Model() : modelListener(0)
+Model::Model() : modelListener(0), lastWifiLevel(0xFFU)
 {
 
 }
@@ -32,6 +32,14 @@ void Model::tick()
     {
         modelListener->handUpdated(present, x / 10.0f, y / 10.0f);
         if (present && click) modelListener->handClicked();
+
+        /* The simulator never pushes a level, so the View keeps its demo value. */
+        const uint8_t wifiLevel = APP_WiFi_GetSignalLevel();
+        if (wifiLevel != lastWifiLevel)
+        {
+            lastWifiLevel = wifiLevel;
+            modelListener->wifiLevelUpdated(wifiLevel);
+        }
     }
 #endif
 }

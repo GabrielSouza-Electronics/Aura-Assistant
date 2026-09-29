@@ -24,6 +24,7 @@
 #include "w61_at_internal.h"
 #include "common_parser.h" /* Common Parser functions */
 #include "event_groups.h"
+#include "w61_at_credential.h" /* Aura: raw credentials -> bounded AT strings */
 
 #if (defined(SYS_DBG_ENABLE_TA4) && (SYS_DBG_ENABLE_TA4 >= 1))
 #include "trcRecorder.h"
@@ -312,13 +313,29 @@ W61_Status_t W61_WiFi_Connect(W61_Object_t *Obj, W61_WiFi_Connect_Opts_t *Connec
 {
   W61_Status_t ret = W61_STATUS_ERROR;
   uint32_t pos = 0;
-  char cmd[W61_CMDRSP_STRING_SIZE];
+  /* Escaped 32-byte SSID + 63-byte password + BSSID/syntax fit in 256. */
+  char cmd[256];
+  _Static_assert(2U * (W61_WIFI_MAX_SSID_SIZE + W61_WIFI_MAX_PASSWORD_SIZE) + 48U <= sizeof(cmd),
+                 "Wi-Fi AT command must fit fully escaped credentials and BSSID");
+  char escaped_ssid[2U * W61_WIFI_MAX_SSID_SIZE + 1U];
+  char escaped_password[2U * W61_WIFI_MAX_PASSWORD_SIZE + 1U] = {0};
   W61_NULL_ASSERT(Obj);
   W61_NULL_ASSERT(ConnectOpts);
+
+  if (ConnectOpts->WPS != 1U &&
+      (!W61_CredentialEscape(ConnectOpts->SSID, W61_WIFI_MAX_SSID_SIZE,
+                            escaped_ssid, sizeof(escaped_ssid)) ||
+       !W61_CredentialEscape(ConnectOpts->Password, W61_WIFI_MAX_PASSWORD_SIZE,
+                            escaped_password, sizeof(escaped_password))))
+  {
+    W61_CredentialClear(escaped_password, sizeof(escaped_password));
+    return W61_STATUS_ERROR;
+  }
 
   if ((ConnectOpts->WPS == 0U) && (ConnectOpts->SSID[0] == 0U))
   {
     WIFI_LOG_ERROR("SSID cannot be NULL\n");
+    W61_CredentialClear(escaped_password, sizeof(escaped_password));
     return ret;
   }
 
@@ -336,23 +353,23 @@ W61_Status_t W61_WiFi_Connect(W61_Object_t *Obj, W61_WiFi_Connect_Opts_t *Connec
 
   if (ConnectOpts->WPS == 1U)
   {
-    (void)snprintf((char *)cmd, W61_CMDRSP_STRING_SIZE, "AT+WPS=1\r\n");
+    (void)snprintf((char *)cmd, sizeof(cmd), "AT+WPS=1\r\n");
   }
   else if (ConnectOpts->Secured == 1U)
   {
     /* Setup the secure SSID stored in credentials as required parameters */
-    (void)snprintf((char *)cmd, W61_CMDRSP_STRING_SIZE, "AT+CWJAPS=\"%s\"\r\n", ConnectOpts->SSID);
+    (void)snprintf((char *)cmd, sizeof(cmd), "AT+CWJAPS=\"%s\"\r\n", escaped_ssid);
   }
   else
   {
     /* Setup the SSID and Password as required parameters */
-    pos += snprintf((char *)cmd, W61_CMDRSP_STRING_SIZE, "AT+CWJAP=\"%s\",\"%s\",",
-                    ConnectOpts->SSID, ConnectOpts->Password);
+    pos += snprintf((char *)cmd, sizeof(cmd), "AT+CWJAP=\"%s\",\"%s\",",
+                    escaped_ssid, escaped_password);
 
     /* Add optional BSSID parameters if defined */
     if (ConnectOpts->MAC[0] != 0U)
     {
-      pos += snprintf((char *)&cmd[pos], W61_CMDRSP_STRING_SIZE - pos,
+      pos += snprintf((char *)&cmd[pos], sizeof(cmd) - pos,
                       "\"" MACSTR "\"", MAC2STR(ConnectOpts->MAC));
     }
 
@@ -360,11 +377,15 @@ W61_Status_t W61_WiFi_Connect(W61_Object_t *Obj, W61_WiFi_Connect_Opts_t *Connec
     if (!((ConnectOpts->WEP == 0U) || (ConnectOpts->WEP == 1U)))
     {
       WIFI_LOG_ERROR("WEP value is out of range [0;1]\n");
+      W61_CredentialClear(cmd, sizeof(cmd));
+      W61_CredentialClear(escaped_password, sizeof(escaped_password));
       return ret;
     }
-    (void)snprintf((char *)&cmd[pos], W61_CMDRSP_STRING_SIZE - pos, ",%" PRIu32 "\r\n", ConnectOpts->WEP);
+    (void)snprintf((char *)&cmd[pos], sizeof(cmd) - pos, ",%" PRIu32 "\r\n", ConnectOpts->WEP);
   }
   ret = W61_AT_Common_SetExecute(Obj, (uint8_t *)cmd, W61_WIFI_CONNECT_TIMEOUT);
+  W61_CredentialClear(cmd, sizeof(cmd));
+  W61_CredentialClear(escaped_password, sizeof(escaped_password));
 
   if ((ret == W61_STATUS_OK) && (W61_WiFi_SetReconnectionOpts(Obj, ConnectOpts) != W61_STATUS_OK))
   {
@@ -467,10 +488,13 @@ W61_Status_t W61_WiFi_AddCredentials(W61_Object_t *Obj, uint8_t SSID[W61_WIFI_MA
 W61_Status_t W61_WiFi_DeleteCredentials(W61_Object_t *Obj, uint8_t SSID[W61_WIFI_MAX_SSID_SIZE + 1])
 {
   char cmd[W61_CMDRSP_STRING_SIZE];
+  char escaped_ssid[2U * W61_WIFI_MAX_SSID_SIZE + 1U];
   W61_NULL_ASSERT(Obj);
   W61_NULL_ASSERT(SSID);
 
-  (void)snprintf(cmd, W61_CMDRSP_STRING_SIZE, "AT+CWCREDDEL=\"%s\"\r\n", SSID);
+  if (!W61_CredentialEscape(SSID, W61_WIFI_MAX_SSID_SIZE, escaped_ssid, sizeof(escaped_ssid)))
+  { return W61_STATUS_ERROR; }
+  (void)snprintf(cmd, W61_CMDRSP_STRING_SIZE, "AT+CWCREDDEL=\"%s\"\r\n", escaped_ssid);
   return W61_AT_Common_SetExecute(Obj, (uint8_t *)cmd, W61_NCP_TIMEOUT);
 }
 

@@ -284,8 +284,9 @@ void W6X_WiFi_PrintScan(W6X_WiFi_Scan_Result_t *results);
 /**
   * @brief  Join an Access Point (connects the station interface using the provided options)
   * @param  connect_opts: connection options
-  * @note   It is not recommended to use the characters , " and \ in the SSID and password.
-  *         If needed, they must be preceded by a \ to be interpreted correctly.
+  * @note   Aura local driver patch: pass raw SSID/password strings. The driver
+  *         escapes comma, double quote and backslash for AT; do not pre-escape.
+  *         Control characters and overlong strings are rejected.
   * @note   If the connection is successful, the Wi-Fi station credentials are stored in the NCP
   * @note   If the ::W6X_WIFI_AUTOCONNECT is enabled, the Wi-Fi station will be automatically reconnected
   *         at the next power on

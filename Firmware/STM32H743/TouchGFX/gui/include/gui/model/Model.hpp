@@ -24,6 +24,7 @@ public:
     void completeStartup();
 protected:
     ModelListener* modelListener;
+    uint8_t lastWifiLevel;   /* last level delivered to the listener */
 };
 
 #endif // MODEL_HPP
