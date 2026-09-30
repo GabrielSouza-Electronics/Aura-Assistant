@@ -1,0 +1,535 @@
+{
+  "settings_row_0": {
+    "width": 364,
+    "height": 54,
+    "colors": 67
+  },
+  "settings_rowf_0": {
+    "width": 364,
+    "height": 54,
+    "colors": 75
+  },
+  "settings_glow_0": {
+    "width": 392,
+    "height": 82,
+    "colors": 11
+  },
+  "settings_row_1": {
+    "width": 364,
+    "height": 54,
+    "colors": 66
+  },
+  "settings_rowf_1": {
+    "width": 364,
+    "height": 54,
+    "colors": 78
+  },
+  "settings_glow_1": {
+    "width": 392,
+    "height": 82,
+    "colors": 11
+  },
+  "settings_row_2": {
+    "width": 364,
+    "height": 54,
+    "colors": 65
+  },
+  "settings_rowf_2": {
+    "width": 364,
+    "height": 54,
+    "colors": 73
+  },
+  "settings_glow_2": {
+    "width": 392,
+    "height": 82,
+    "colors": 11
+  },
+  "settings_row_3": {
+    "width": 364,
+    "height": 54,
+    "colors": 68
+  },
+  "settings_rowf_3": {
+    "width": 364,
+    "height": 54,
+    "colors": 76
+  },
+  "settings_glow_3": {
+    "width": 392,
+    "height": 82,
+    "colors": 11
+  },
+  "settings_sub_title": {
+    "width": 155,
+    "height": 17,
+    "colors": 9
+  },
+  "g_41": {
+    "width": 19,
+    "height": 30,
+    "colors": 8
+  },
+  "g_42": {
+    "width": 18,
+    "height": 30,
+    "colors": 8
+  },
+  "g_43": {
+    "width": 21,
+    "height": 30,
+    "colors": 8
+  },
+  "g_44": {
+    "width": 20,
+    "height": 30,
+    "colors": 7
+  },
+  "g_45": {
+    "width": 16,
+    "height": 30,
+    "colors": 8
+  },
+  "g_46": {
+    "width": 16,
+    "height": 30,
+    "colors": 8
+  },
+  "g_47": {
+    "width": 21,
+    "height": 30,
+    "colors": 8
+  },
+  "g_48": {
+    "width": 20,
+    "height": 30,
+    "colors": 7
+  },
+  "g_49": {
+    "width": 12,
+    "height": 30,
+    "colors": 6
+  },
+  "g_4A": {
+    "width": 17,
+    "height": 30,
+    "colors": 8
+  },
+  "g_4B": {
+    "width": 18,
+    "height": 30,
+    "colors": 8
+  },
+  "g_4C": {
+    "width": 15,
+    "height": 30,
+    "colors": 7
+  },
+  "g_4D": {
+    "width": 23,
+    "height": 30,
+    "colors": 8
+  },
+  "g_4E": {
+    "width": 20,
+    "height": 30,
+    "colors": 8
+  },
+  "g_4F": {
+    "width": 21,
+    "height": 30,
+    "colors": 8
+  },
+  "g_50": {
+    "width": 18,
+    "height": 30,
+    "colors": 8
+  },
+  "g_51": {
+    "width": 21,
+    "height": 30,
+    "colors": 8
+  },
+  "g_52": {
+    "width": 18,
+    "height": 30,
+    "colors": 8
+  },
+  "g_53": {
+    "width": 18,
+    "height": 30,
+    "colors": 8
+  },
+  "g_54": {
+    "width": 17,
+    "height": 30,
+    "colors": 5
+  },
+  "g_55": {
+    "width": 19,
+    "height": 30,
+    "colors": 8
+  },
+  "g_56": {
+    "width": 19,
+    "height": 30,
+    "colors": 8
+  },
+  "g_57": {
+    "width": 25,
+    "height": 30,
+    "colors": 8
+  },
+  "g_58": {
+    "width": 19,
+    "height": 30,
+    "colors": 8
+  },
+  "g_59": {
+    "width": 18,
+    "height": 30,
+    "colors": 8
+  },
+  "g_5A": {
+    "width": 17,
+    "height": 30,
+    "colors": 8
+  },
+  "g_30": {
+    "width": 18,
+    "height": 30,
+    "colors": 8
+  },
+  "g_31": {
+    "width": 13,
+    "height": 30,
+    "colors": 7
+  },
+  "g_32": {
+    "width": 17,
+    "height": 30,
+    "colors": 8
+  },
+  "g_33": {
+    "width": 18,
+    "height": 30,
+    "colors": 8
+  },
+  "g_34": {
+    "width": 19,
+    "height": 30,
+    "colors": 8
+  },
+  "g_35": {
+    "width": 18,
+    "height": 30,
+    "colors": 8
+  },
+  "g_36": {
+    "width": 18,
+    "height": 30,
+    "colors": 8
+  },
+  "g_37": {
+    "width": 17,
+    "height": 30,
+    "colors": 8
+  },
+  "g_38": {
+    "width": 18,
+    "height": 30,
+    "colors": 8
+  },
+  "g_39": {
+    "width": 18,
+    "height": 30,
+    "colors": 8
+  },
+  "g_2D": {
+    "width": 17,
+    "height": 30,
+    "colors": 7
+  },
+  "g_5F": {
+    "width": 21,
+    "height": 30,
+    "colors": 4
+  },
+  "g_2E": {
+    "width": 11,
+    "height": 30,
+    "colors": 6
+  },
+  "g_2C": {
+    "width": 11,
+    "height": 30,
+    "colors": 8
+  },
+  "g_3A": {
+    "width": 11,
+    "height": 30,
+    "colors": 8
+  },
+  "g_3B": {
+    "width": 12,
+    "height": 30,
+    "colors": 7
+  },
+  "g_2F": {
+    "width": 16,
+    "height": 30,
+    "colors": 8
+  },
+  "g_25": {
+    "width": 21,
+    "height": 30,
+    "colors": 8
+  },
+  "g_2B": {
+    "width": 20,
+    "height": 30,
+    "colors": 8
+  },
+  "g_26": {
+    "width": 21,
+    "height": 30,
+    "colors": 8
+  },
+  "g_27": {
+    "width": 10,
+    "height": 30,
+    "colors": 6
+  },
+  "g_28": {
+    "width": 16,
+    "height": 30,
+    "colors": 8
+  },
+  "g_29": {
+    "width": 16,
+    "height": 30,
+    "colors": 8
+  },
+  "g_21": {
+    "width": 13,
+    "height": 30,
+    "colors": 7
+  },
+  "g_3F": {
+    "width": 17,
+    "height": 30,
+    "colors": 8
+  },
+  "g_23": {
+    "width": 23,
+    "height": 30,
+    "colors": 8
+  },
+  "g_40": {
+    "width": 25,
+    "height": 30,
+    "colors": 9
+  },
+  "g_2A": {
+    "width": 16,
+    "height": 30,
+    "colors": 8
+  },
+  "lbl_settings": {
+    "width": 126,
+    "height": 34,
+    "colors": 9
+  },
+  "lbl_tasks": {
+    "width": 88,
+    "height": 34,
+    "colors": 8
+  },
+  "lbl_reminders": {
+    "width": 147,
+    "height": 34,
+    "colors": 9
+  },
+  "lbl_calendar": {
+    "width": 140,
+    "height": 34,
+    "colors": 8
+  },
+  "lbl_chat": {
+    "width": 79,
+    "height": 34,
+    "colors": 8
+  },
+  "ctx_settings": {
+    "width": 69,
+    "height": 17,
+    "colors": 9
+  },
+  "ctx_tasks": {
+    "width": 50,
+    "height": 17,
+    "colors": 9
+  },
+  "ctx_reminders": {
+    "width": 79,
+    "height": 17,
+    "colors": 9
+  },
+  "ctx_calendar": {
+    "width": 76,
+    "height": 17,
+    "colors": 9
+  },
+  "ctx_chat": {
+    "width": 45,
+    "height": 17,
+    "colors": 8
+  },
+  "msg_hold": {
+    "width": 126,
+    "height": 20,
+    "colors": 8
+  },
+  "msg_cancelled": {
+    "width": 92,
+    "height": 20,
+    "colors": 9
+  },
+  "msg_move": {
+    "width": 153,
+    "height": 20,
+    "colors": 9
+  },
+  "msg_nocontent": {
+    "width": 132,
+    "height": 20,
+    "colors": 9
+  },
+  "msg_back": {
+    "width": 186,
+    "height": 20,
+    "colors": 9
+  },
+  "sb_ready": {
+    "width": 109,
+    "height": 43,
+    "colors": 8
+  },
+  "sb_wave": {
+    "width": 123,
+    "height": 20,
+    "colors": 9
+  },
+  "settings_36": {
+    "width": 36,
+    "height": 36,
+    "colors": 28
+  },
+  "settings_48": {
+    "width": 48,
+    "height": 48,
+    "colors": 29
+  },
+  "settings_64": {
+    "width": 64,
+    "height": 64,
+    "colors": 29
+  },
+  "tasks_36": {
+    "width": 36,
+    "height": 36,
+    "colors": 29
+  },
+  "tasks_48": {
+    "width": 48,
+    "height": 48,
+    "colors": 29
+  },
+  "tasks_64": {
+    "width": 64,
+    "height": 64,
+    "colors": 29
+  },
+  "reminders_36": {
+    "width": 36,
+    "height": 36,
+    "colors": 29
+  },
+  "reminders_48": {
+    "width": 48,
+    "height": 48,
+    "colors": 29
+  },
+  "reminders_64": {
+    "width": 64,
+    "height": 64,
+    "colors": 29
+  },
+  "calendar_36": {
+    "width": 36,
+    "height": 36,
+    "colors": 29
+  },
+  "calendar_48": {
+    "width": 48,
+    "height": 48,
+    "colors": 29
+  },
+  "calendar_64": {
+    "width": 64,
+    "height": 64,
+    "colors": 29
+  },
+  "chat_36": {
+    "width": 36,
+    "height": 36,
+    "colors": 28
+  },
+  "chat_48": {
+    "width": 48,
+    "height": 48,
+    "colors": 28
+  },
+  "chat_64": {
+    "width": 64,
+    "height": 64,
+    "colors": 29
+  },
+  "wifi_0": {
+    "width": 22,
+    "height": 22,
+    "colors": 20
+  },
+  "wifi_1": {
+    "width": 22,
+    "height": 22,
+    "colors": 20
+  },
+  "wifi_2": {
+    "width": 22,
+    "height": 22,
+    "colors": 25
+  },
+  "wifi_3": {
+    "width": 22,
+    "height": 22,
+    "colors": 26
+  },
+  "batt_frame": {
+    "width": 30,
+    "height": 15,
+    "colors": 22
+  },
+  "batt_bolt": {
+    "width": 30,
+    "height": 15,
+    "colors": 16
+  },
+  "glyph_max_advance16": 301,
+  "sizes": {
+    "settings_label": 18,
+    "settings_value": 18,
+    "title": 24,
+    "subtitle": 12,
+    "hint": 14
+  }
+}

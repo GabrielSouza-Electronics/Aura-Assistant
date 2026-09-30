@@ -30,6 +30,11 @@ BSP_LCD_Status_t BSP_LCD_Reset(void);
 
 /** Control the active-high LCD backlight enable signal. */
 BSP_LCD_Status_t BSP_LCD_SetBacklight(bool enabled);
+/* Brightness duty cycle: 10..100%, in steps of 10. Retained while off. */
+BSP_LCD_Status_t BSP_LCD_SetBrightness(uint8_t percent);
+uint8_t BSP_LCD_GetBrightness(void);
+/* Called only from the existing 1 ms HAL timebase ISR; no RTOS calls. */
+void BSP_LCD_BacklightTick1ms(void);
 uint32_t BSP_LCD_GetSerialClockEdgeCount(void);
 uint32_t BSP_LCD_GetCommandCount(void);
 

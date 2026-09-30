@@ -66,7 +66,7 @@ LAYOUT_HPP = os.path.join(TGFX, "gui", "include", "gui", "common",
 GLYPH_HPP = os.path.join(TGFX, "gui", "include", "gui", "common",
                          "SettingsGlyphs.hpp")
 
-SS = 4
+SS = 6
 W = H = 480
 
 # ------------------------------------------------------------------ layout
@@ -80,7 +80,7 @@ ROW_PITCH = ROW_H + ROW_GAP
 R_SAFE = 214            # raio onde os cantos das caixas ainda cabem
 HW_MAX = 178            # meia-largura maxima de uma caixa
 ICON_CX = 104
-ICON_N = 26
+ICON_N = 30
 LABEL_X = 130           # inicio do texto visivel
 VALUE_RX = 352          # fim do texto visivel do valor
 CHEV_CX = 377
@@ -96,7 +96,7 @@ ROWS = [
 
 # Atlas dos valores. O texto e convertido para MAIUSCULAS no GlyphText
 # (mesmo estilo dos rotulos); caracteres fora do atlas viram '?'.
-GLYPH_PT = 11
+GLYPH_PT = 18
 GLYPH_PAD = 3           # margem de cada celula, px logicos
 GLYPH_CHARS = ("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
                "-_.,:;/%+&'()!?#@*")
@@ -107,12 +107,14 @@ SUBTITLE = "CUSTOMIZE YOUR AURA"
 C_CYAN = np.array((78, 196, 252), np.float32)
 C_FILL_TOP = np.array((10, 30, 56), np.float32)
 C_FILL_BOT = np.array((5, 16, 34), np.float32)
-C_FOCUS_TOP = np.array((14, 52, 92), np.float32)
-C_FOCUS_BOT = np.array((7, 26, 52), np.float32)
+C_FOCUS = np.array((40, 220, 150), np.float32)
+C_FOCUS_ACCENT = np.array((184, 255, 219), np.float32)
+C_FOCUS_TOP = np.array((8, 65, 43), np.float32)
+C_FOCUS_BOT = np.array((4, 32, 23), np.float32)
 
 # rampa do valor: mais azul e menos branca que a do rotulo - o valor e
 # informacao secundaria, como na referencia.
-VAL_RAMP = ((18, 60, 120), (70, 168, 240), (176, 228, 255))
+VAL_RAMP = ((184, 223, 243),) * 3
 
 
 def row_rect(i):
@@ -261,7 +263,9 @@ def build_row(i, focused):
     # composicao "over": fill -> borda -> barra
     rgb = np.broadcast_to(fill_rgb, (h, w, 3)).copy()
     a = fill_a.copy()
-    for col, la in ((C_CYAN, border_a), (np.array((200, 244, 255), np.float32), accent_a)):
+    border_color = C_FOCUS if focused else C_CYAN
+    accent_color = C_FOCUS_ACCENT if focused else np.array((200, 244, 255), np.float32)
+    for col, la in ((border_color, border_a), (accent_color, accent_a)):
         la3 = la[..., None]
         out_a = la + a * (1 - la)
         rgb = np.where(out_a[..., None] > 0,
@@ -281,7 +285,7 @@ def build_row(i, focused):
         ic = fade(ic, 0.82)
     panel.alpha_composite(ic, (int(ICON_CX - ICON_N / 2 + ox), int(round(cy - ICON_N / 2 + oy))))
 
-    lb = gt.render_text(label, 12, gt.FONT_MED)
+    lb = gt.render_text(label, 18, gt.FONT_MED)
     if not focused:
         lb = fade(lb, 0.88)
     panel.alpha_composite(lb, (int(LABEL_X - 6 + ox), int(round(cy - lb.height / 2 + oy))))
@@ -308,8 +312,8 @@ def build_glow(i):
     t = np.clip(g1 * 0.55 + g2 * 1.1, 0, 1)
     # corta a cauda do blur: sem isso a borda do sprite fica com alpha > 0
     t = np.clip((t - 0.03) / 0.97, 0, 1)
-    # rampa propria: so azul/ciano, nunca branco - e luz, nao traco
-    lo, hi = np.array((20, 90, 190), np.float32), np.array((90, 210, 255), np.float32)
+    # Emerald focus halo; keep the blue palette on unselected rows.
+    lo, hi = np.array((6, 90, 53), np.float32), np.array((48, 225, 153), np.float32)
     rgb = lo * (1 - t[..., None]) + hi * t[..., None]
     return Image.fromarray(np.dstack([rgb, t * 0.85 * 255]).astype(np.uint8), "RGBA")
 
@@ -318,7 +322,7 @@ def render_glyph(c):
     """Um caractere, com o mesmo acabamento do gen_text.render_text.
     Devolve (imagem, avanco em px logicos). O avanco inclui o tracking."""
     pt = GLYPH_PT
-    f = ImageFont.truetype(gt.FONT_REG, pt * SS)
+    f = ImageFont.truetype(gt.FONT_MED, pt * SS)
     probe = ImageDraw.Draw(Image.new("L", (8, 8)))
     adv = (probe.textlength(c, font=f) + gt.TRACK * pt * SS) / SS
     cw = int(math.ceil(adv)) + 2 * GLYPH_PAD
@@ -338,7 +342,7 @@ def render_glyph(c):
 def build_glyphs():
     """codigo ASCII -> (imagem, avanco). O espaco so tem avanco."""
     out = {ord(c): render_glyph(c) for c in GLYPH_CHARS}
-    f = ImageFont.truetype(gt.FONT_REG, GLYPH_PT * SS)
+    f = ImageFont.truetype(gt.FONT_MED, GLYPH_PT * SS)
     probe = ImageDraw.Draw(Image.new("L", (8, 8)))
     space = (probe.textlength(" ", font=f) + gt.TRACK * GLYPH_PT * SS) / SS
     return {k: (quant256(im), a) for k, (im, a) in out.items()}, space
@@ -368,11 +372,15 @@ def fade(im, k):
 
 
 # ------------------------------------------------------------------ saida
-def quant256(im):
+def quant256(im, preserve_clear=False):
     """Garante <= 256 cores RGBA sem dithering (regra do L8)."""
-    q = im.quantize(colors=256, method=Image.Quantize.FASTOCTREE,
+    q = im.quantize(colors=255 if preserve_clear else 256, method=Image.Quantize.FASTOCTREE,
                     dither=Image.Dither.NONE).convert("RGBA")
     a = np.asarray(q).copy()
+    if preserve_clear:
+        # Reserve one palette entry for exact transparency; quantization can
+        # otherwise merge the clear halo edge with low-alpha pixels.
+        a[np.asarray(im)[..., 3] == 0] = 0
     a[a[..., 3] == 0] = 0                 # transparente e sempre (0,0,0,0)
     return Image.fromarray(a, "RGBA")
 
@@ -394,8 +402,9 @@ def build_all():
         out[f"row_{i}"] = (build_row(i, False), (x0 - PAD, y0 - PAD))
         out[f"rowf_{i}"] = (build_row(i, True), (x0 - PAD, y0 - PAD))
         out[f"glow_{i}"] = (build_glow(i), (x0 - GLOW_PAD, y0 - GLOW_PAD))
-    out["sub_title"] = (gt.render_text(SUBTITLE, 9, gt.FONT_REG), None)
-    return {k: (quant256(im), pos) for k, (im, pos) in out.items()}
+    out["sub_title"] = (gt.render_text(SUBTITLE, 12, gt.FONT_MED), None)
+    return {k: (quant256(im, preserve_clear=k.startswith("glow_")), pos)
+            for k, (im, pos) in out.items()}
 
 
 def write_layout(assets):
@@ -440,7 +449,7 @@ def write_layout(assets):
     L.append(f"static const int16_t SL_VALUE_END_FB_Y = {W - (VALUE_RX + GLYPH_PAD)};")
     maxw = []
     for key, label in ROWS:
-        ink = gt.render_text(label, 12, gt.FONT_MED).width - 12
+        ink = gt.render_text(label, 18, gt.FONT_MED).width - 12
         maxw.append(VALUE_RX - (LABEL_X + ink) - 14)
     L.append("static const int16_t SL_VALUE_MAX_W[SL_ROWS] = { "
              + ", ".join(str(v) for v in maxw) + " };")
@@ -464,11 +473,11 @@ def write_glyphs(glyphs, space):
     L.append("#include <stdint.h>")
     L.append("#include <images/BitmapDatabase.hpp>")
     L.append("")
-    L.append("/* Atlas de glifos dos valores do menu Settings (Poppins Regular")
+    L.append("/* Atlas de glifos dos valores do menu Settings (Poppins Medium")
     L.append(f"   {GLYPH_PT} pt, tracking do gen_text.py). Celulas ja giradas: no")
     L.append("   framebuffer a largura e a altura do texto e a altura e a")
     L.append("   largura LOGICA da celula. Avancos em 1/16 px logico.       */")
-    L.append("struct SettingsGlyph { char c; uint16_t id; uint8_t cellW; uint8_t adv16; };")
+    L.append("struct SettingsGlyph { char c; uint16_t id; uint8_t cellW; uint16_t adv16; };")
     L.append("")
     first = next(iter(glyphs.values()))[0]
     L.append(f"static const int16_t SG_TEXT_H = {first.height};   /* largura no fb */")

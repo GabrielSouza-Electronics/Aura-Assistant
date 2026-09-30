@@ -1,0 +1,1255 @@
+{
+  "cal_background": {
+    "size": [
+      480,
+      480
+    ],
+    "colors": 1
+  },
+  "cal_today": {
+    "size": [
+      44,
+      44
+    ],
+    "colors": 49
+  },
+  "cal_today_holiday": {
+    "size": [
+      44,
+      44
+    ],
+    "colors": 39
+  },
+  "cal_holiday": {
+    "size": [
+      44,
+      44
+    ],
+    "colors": 29
+  },
+  "cal_clock_30": {
+    "size": [
+      48,
+      88
+    ],
+    "colors": 19
+  },
+  "cal_clock_31": {
+    "size": [
+      48,
+      88
+    ],
+    "colors": 9
+  },
+  "cal_clock_32": {
+    "size": [
+      48,
+      88
+    ],
+    "colors": 21
+  },
+  "cal_clock_33": {
+    "size": [
+      48,
+      88
+    ],
+    "colors": 21
+  },
+  "cal_clock_34": {
+    "size": [
+      48,
+      88
+    ],
+    "colors": 15
+  },
+  "cal_clock_35": {
+    "size": [
+      48,
+      88
+    ],
+    "colors": 18
+  },
+  "cal_clock_36": {
+    "size": [
+      48,
+      88
+    ],
+    "colors": 22
+  },
+  "cal_clock_37": {
+    "size": [
+      48,
+      88
+    ],
+    "colors": 18
+  },
+  "cal_clock_38": {
+    "size": [
+      48,
+      88
+    ],
+    "colors": 21
+  },
+  "cal_clock_39": {
+    "size": [
+      48,
+      88
+    ],
+    "colors": 21
+  },
+  "cal_clock_3a": {
+    "size": [
+      22,
+      88
+    ],
+    "colors": 19
+  },
+  "cal_clock_2d": {
+    "size": [
+      48,
+      88
+    ],
+    "colors": 8
+  },
+  "cal_day_normal_01": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 10
+  },
+  "cal_day_normal_02": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 15
+  },
+  "cal_day_normal_03": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 15
+  },
+  "cal_day_normal_04": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 12
+  },
+  "cal_day_normal_05": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 19
+  },
+  "cal_day_normal_06": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 18
+  },
+  "cal_day_normal_07": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 13
+  },
+  "cal_day_normal_08": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 19
+  },
+  "cal_day_normal_09": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 17
+  },
+  "cal_day_normal_10": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 16
+  },
+  "cal_day_normal_11": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 12
+  },
+  "cal_day_normal_12": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 19
+  },
+  "cal_day_normal_13": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 21
+  },
+  "cal_day_normal_14": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 14
+  },
+  "cal_day_normal_15": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 17
+  },
+  "cal_day_normal_16": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 15
+  },
+  "cal_day_normal_17": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 16
+  },
+  "cal_day_normal_18": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 16
+  },
+  "cal_day_normal_19": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 14
+  },
+  "cal_day_normal_20": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 18
+  },
+  "cal_day_normal_21": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 17
+  },
+  "cal_day_normal_22": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 16
+  },
+  "cal_day_normal_23": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 20
+  },
+  "cal_day_normal_24": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 19
+  },
+  "cal_day_normal_25": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 20
+  },
+  "cal_day_normal_26": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 21
+  },
+  "cal_day_normal_27": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 18
+  },
+  "cal_day_normal_28": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 20
+  },
+  "cal_day_normal_29": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 19
+  },
+  "cal_day_normal_30": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 18
+  },
+  "cal_day_normal_31": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 17
+  },
+  "cal_day_weekend_01": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 16
+  },
+  "cal_day_weekend_02": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 20
+  },
+  "cal_day_weekend_03": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 22
+  },
+  "cal_day_weekend_04": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 21
+  },
+  "cal_day_weekend_05": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 22
+  },
+  "cal_day_weekend_06": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 19
+  },
+  "cal_day_weekend_07": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 21
+  },
+  "cal_day_weekend_08": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 22
+  },
+  "cal_day_weekend_09": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 22
+  },
+  "cal_day_weekend_10": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 22
+  },
+  "cal_day_weekend_11": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 24
+  },
+  "cal_day_weekend_12": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 25
+  },
+  "cal_day_weekend_13": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 24
+  },
+  "cal_day_weekend_14": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 25
+  },
+  "cal_day_weekend_15": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 27
+  },
+  "cal_day_weekend_16": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 24
+  },
+  "cal_day_weekend_17": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 21
+  },
+  "cal_day_weekend_18": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 24
+  },
+  "cal_day_weekend_19": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 24
+  },
+  "cal_day_weekend_20": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 23
+  },
+  "cal_day_weekend_21": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 25
+  },
+  "cal_day_weekend_22": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 22
+  },
+  "cal_day_weekend_23": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 24
+  },
+  "cal_day_weekend_24": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 26
+  },
+  "cal_day_weekend_25": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 28
+  },
+  "cal_day_weekend_26": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 24
+  },
+  "cal_day_weekend_27": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 21
+  },
+  "cal_day_weekend_28": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 25
+  },
+  "cal_day_weekend_29": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 26
+  },
+  "cal_day_weekend_30": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 24
+  },
+  "cal_day_weekend_31": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 25
+  },
+  "cal_day_muted_01": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 17
+  },
+  "cal_day_muted_02": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 27
+  },
+  "cal_day_muted_03": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 26
+  },
+  "cal_day_muted_04": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 25
+  },
+  "cal_day_muted_05": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 26
+  },
+  "cal_day_muted_06": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 25
+  },
+  "cal_day_muted_07": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 24
+  },
+  "cal_day_muted_08": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 26
+  },
+  "cal_day_muted_09": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 25
+  },
+  "cal_day_muted_10": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 33
+  },
+  "cal_day_muted_11": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 27
+  },
+  "cal_day_muted_12": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 31
+  },
+  "cal_day_muted_13": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 34
+  },
+  "cal_day_muted_14": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 32
+  },
+  "cal_day_muted_15": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 29
+  },
+  "cal_day_muted_16": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 34
+  },
+  "cal_day_muted_17": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 30
+  },
+  "cal_day_muted_18": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 32
+  },
+  "cal_day_muted_19": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 34
+  },
+  "cal_day_muted_20": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 29
+  },
+  "cal_day_muted_21": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 30
+  },
+  "cal_day_muted_22": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 28
+  },
+  "cal_day_muted_23": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 30
+  },
+  "cal_day_muted_24": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 36
+  },
+  "cal_day_muted_25": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 34
+  },
+  "cal_day_muted_26": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 34
+  },
+  "cal_day_muted_27": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 28
+  },
+  "cal_day_muted_28": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 31
+  },
+  "cal_day_muted_29": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 32
+  },
+  "cal_day_muted_30": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 32
+  },
+  "cal_day_muted_31": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 30
+  },
+  "cal_day_holiday_01": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 11
+  },
+  "cal_day_holiday_02": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 17
+  },
+  "cal_day_holiday_03": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 22
+  },
+  "cal_day_holiday_04": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 15
+  },
+  "cal_day_holiday_05": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 18
+  },
+  "cal_day_holiday_06": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 20
+  },
+  "cal_day_holiday_07": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 17
+  },
+  "cal_day_holiday_08": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 22
+  },
+  "cal_day_holiday_09": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 21
+  },
+  "cal_day_holiday_10": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 22
+  },
+  "cal_day_holiday_11": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 22
+  },
+  "cal_day_holiday_12": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 21
+  },
+  "cal_day_holiday_13": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 23
+  },
+  "cal_day_holiday_14": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 20
+  },
+  "cal_day_holiday_15": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 20
+  },
+  "cal_day_holiday_16": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 22
+  },
+  "cal_day_holiday_17": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 17
+  },
+  "cal_day_holiday_18": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 23
+  },
+  "cal_day_holiday_19": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 22
+  },
+  "cal_day_holiday_20": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 23
+  },
+  "cal_day_holiday_21": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 23
+  },
+  "cal_day_holiday_22": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 21
+  },
+  "cal_day_holiday_23": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 22
+  },
+  "cal_day_holiday_24": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 21
+  },
+  "cal_day_holiday_25": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 23
+  },
+  "cal_day_holiday_26": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 23
+  },
+  "cal_day_holiday_27": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 20
+  },
+  "cal_day_holiday_28": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 23
+  },
+  "cal_day_holiday_29": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 24
+  },
+  "cal_day_holiday_30": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 22
+  },
+  "cal_day_holiday_31": {
+    "size": [
+      34,
+      32
+    ],
+    "colors": 22
+  },
+  "cal_month_01": {
+    "size": [
+      105,
+      30
+    ],
+    "colors": 21
+  },
+  "cal_month_02": {
+    "size": [
+      112,
+      31
+    ],
+    "colors": 21
+  },
+  "cal_month_03": {
+    "size": [
+      82,
+      26
+    ],
+    "colors": 20
+  },
+  "cal_month_04": {
+    "size": [
+      61,
+      32
+    ],
+    "colors": 17
+  },
+  "cal_month_05": {
+    "size": [
+      58,
+      30
+    ],
+    "colors": 20
+  },
+  "cal_month_06": {
+    "size": [
+      65,
+      25
+    ],
+    "colors": 18
+  },
+  "cal_month_07": {
+    "size": [
+      56,
+      31
+    ],
+    "colors": 20
+  },
+  "cal_month_08": {
+    "size": [
+      91,
+      31
+    ],
+    "colors": 23
+  },
+  "cal_month_09": {
+    "size": [
+      137,
+      31
+    ],
+    "colors": 21
+  },
+  "cal_month_10": {
+    "size": [
+      102,
+      26
+    ],
+    "colors": 21
+  },
+  "cal_month_11": {
+    "size": [
+      130,
+      26
+    ],
+    "colors": 21
+  },
+  "cal_month_12": {
+    "size": [
+      129,
+      26
+    ],
+    "colors": 21
+  },
+  "cal_year_0": {
+    "size": [
+      23,
+      34
+    ],
+    "colors": 12
+  },
+  "cal_year_1": {
+    "size": [
+      23,
+      34
+    ],
+    "colors": 11
+  },
+  "cal_year_2": {
+    "size": [
+      23,
+      34
+    ],
+    "colors": 15
+  },
+  "cal_year_3": {
+    "size": [
+      23,
+      34
+    ],
+    "colors": 18
+  },
+  "cal_year_4": {
+    "size": [
+      23,
+      34
+    ],
+    "colors": 12
+  },
+  "cal_year_5": {
+    "size": [
+      23,
+      34
+    ],
+    "colors": 18
+  },
+  "cal_year_6": {
+    "size": [
+      23,
+      34
+    ],
+    "colors": 16
+  },
+  "cal_year_7": {
+    "size": [
+      23,
+      34
+    ],
+    "colors": 15
+  },
+  "cal_year_8": {
+    "size": [
+      23,
+      34
+    ],
+    "colors": 15
+  },
+  "cal_year_9": {
+    "size": [
+      23,
+      34
+    ],
+    "colors": 19
+  },
+  "cal_weekday_0": {
+    "size": [
+      42,
+      24
+    ],
+    "colors": 39
+  },
+  "cal_weekday_1": {
+    "size": [
+      42,
+      24
+    ],
+    "colors": 37
+  },
+  "cal_weekday_2": {
+    "size": [
+      42,
+      24
+    ],
+    "colors": 42
+  },
+  "cal_weekday_3": {
+    "size": [
+      42,
+      24
+    ],
+    "colors": 39
+  },
+  "cal_weekday_4": {
+    "size": [
+      42,
+      24
+    ],
+    "colors": 31
+  },
+  "cal_weekday_5": {
+    "size": [
+      42,
+      24
+    ],
+    "colors": 23
+  },
+  "cal_weekday_6": {
+    "size": [
+      42,
+      24
+    ],
+    "colors": 21
+  },
+  "cal_location": {
+    "size": [
+      61,
+      15
+    ],
+    "colors": 36
+  },
+  "cal_hint": {
+    "size": [
+      170,
+      18
+    ],
+    "colors": 45
+  },
+  "cal_status_sync": {
+    "size": [
+      115,
+      15
+    ],
+    "colors": 44
+  },
+  "cal_status_offline": {
+    "size": [
+      127,
+      15
+    ],
+    "colors": 40
+  },
+  "cal_status_loading": {
+    "size": [
+      113,
+      15
+    ],
+    "colors": 42
+  },
+  "cal_status_estimated": {
+    "size": [
+      141,
+      15
+    ],
+    "colors": 39
+  },
+  "cal_status_stale": {
+    "size": [
+      113,
+      15
+    ],
+    "colors": 43
+  },
+  "cal_status_ready": {
+    "size": [
+      112,
+      15
+    ],
+    "colors": 43
+  },
+  "cal_arrow_left": {
+    "size": [
+      24,
+      28
+    ],
+    "colors": 13
+  },
+  "cal_arrow_right": {
+    "size": [
+      24,
+      28
+    ],
+    "colors": 13
+  }
+}

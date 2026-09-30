@@ -15,7 +15,7 @@
 #define EVENT_INDEX 1U
 #define RX_SLOTS 48U
 #define SCAN_MAX 10U
-/* Application policy, not hardware timings. Reboot to open another window. */
+/* Application policy, not hardware timings. Settings opens a new window. */
 #ifndef AURA_PROV_DEV_TIMING
 #ifdef DEBUG
 /* Debug builds only: allow hand-typed nRF Connect writes and debugger pauses. */
@@ -25,12 +25,11 @@
 #endif
 #endif
 #if AURA_PROV_DEV_TIMING
-#define WINDOW_MS 1800000U
 #define FRAME_MS 120000U
 #else
-#define WINDOW_MS 300000U
 #define FRAME_MS 10000U
 #endif
+#define WINDOW_MS 300000U
 #define PAIR_MS 60000U
 #define SCAN_MS 30000U
 #define SEND_MS 1000U
@@ -90,7 +89,30 @@ static bool announced_paired, announced_subscribed;
 static bool wifi_changed;
 static bool restart_advertising;
 static TickType_t advertising_tick;
+static bool enable_request_pending, enable_requested, ui_enabled;
+static bool stop_advertising_pending;
+static TickType_t stop_advertising_tick;
 volatile APP_ProvisionDiagnostics app_provision_diagnostics;
+
+void APP_ProvisionRequestEnabled(bool enabled)
+{
+    taskENTER_CRITICAL();
+    enable_requested = enabled;
+    enable_request_pending = true;
+    taskEXIT_CRITICAL();
+}
+
+bool APP_ProvisionIsEnabled(void)
+{
+    bool enabled;
+    taskENTER_CRITICAL(); enabled = ui_enabled; taskEXIT_CRITICAL();
+    return enabled;
+}
+
+static void PublishEnabled(bool enabled)
+{
+    taskENTER_CRITICAL(); ui_enabled = enabled; taskEXIT_CRITICAL();
+}
 
 void APP_ProvisionWiFiEvent(void)
 {
@@ -518,7 +540,8 @@ W6X_Status_t APP_ProvisionInit(void)
     Prov_FrameReset(&frame);
     link.reject_handle = UINT8_MAX;
     boot_tick = xTaskGetTickCount();
-    window_open = true;
+    window_open = false;
+    PublishEnabled(false);
     initialized = true;
     result = W6X_Ble_CreateService(SERVICE_INDEX, AURA_PROV_SERVICE_UUID, W6X_BLE_UUID_TYPE_128);
     if (result == W6X_STATUS_OK)
@@ -586,15 +609,32 @@ void APP_ProvisionPoll(void)
     uint32_t epoch;
     uint8_t handle, reject;
     bool connected, paired, subscribed, confirm, failed, poisoned, wifi_update;
+    bool requested, enabled;
     taskENTER_CRITICAL();
     epoch = link.epoch; handle = link.handle; reject = link.reject_handle;
     connected = link.connected; paired = link.paired; subscribed = link.subscribed;
     confirm = link.confirm; failed = link.failed; poisoned = link.poisoned;
     wifi_update = wifi_changed; wifi_changed = false;
+    requested = enable_request_pending; enabled = enable_requested;
+    enable_request_pending = false;
     link.confirm = false; link.reject_handle = UINT8_MAX;
     taskEXIT_CRITICAL();
     bool was_open = window_open;
     (void)Window();
+    if (requested)
+    {
+        if (enabled && !window_open)
+        {
+            stop_advertising_pending = false;
+            boot_tick = xTaskGetTickCount();
+            window_open = true;
+            restart_advertising = !connected;
+            advertising_tick = boot_tick - pdMS_TO_TICKS(1000U);
+            if (connected) PublishEnabled(true);
+        }
+        else if (!enabled) { window_open = false; }
+    }
+    app_provision_diagnostics.window_open = window_open;
     app_provision_diagnostics.paired = paired;
     app_provision_diagnostics.subscribed = subscribed;
     if (reject != UINT8_MAX)
@@ -604,7 +644,8 @@ void APP_ProvisionPoll(void)
         ++app_provision_diagnostics.firmware_disconnects;
         (void)W6X_Ble_Disconnect(reject);
     }
-    if (epoch != worker_epoch)
+    const bool link_changed = epoch != worker_epoch;
+    if (link_changed)
     {
         worker_epoch = epoch;
         drop_requested = false;
@@ -615,9 +656,36 @@ void APP_ProvisionPoll(void)
         RefreshBondCount();
         advertising_tick = xTaskGetTickCount() - pdMS_TO_TICKS(1000U);
     }
+    if (!window_open)
+    {
+        PublishEnabled(false);
+        restart_advertising = false;
+        if (was_open || (requested && !enabled) || link_changed)
+        {
+            stop_advertising_pending = true;
+            stop_advertising_tick = xTaskGetTickCount() - pdMS_TO_TICKS(1000U);
+        }
+        if (stop_advertising_pending &&
+            (TickType_t)(xTaskGetTickCount() - stop_advertising_tick) >= pdMS_TO_TICKS(1000U))
+        {
+            stop_advertising_tick = xTaskGetTickCount();
+            W6X_Status_t result = W6X_Ble_AdvStop();
+            app_wifi_diagnostics.ble_adv_status = (uint32_t)result;
+            stop_advertising_pending = result != W6X_STATUS_OK;
+        }
+        if (connected)
+        {
+            /* A fast OFF/ON must not reuse queued commands from the old link
+               while the asynchronous disconnect event is still pending. */
+            taskENTER_CRITICAL();
+            if (link.epoch == epoch) { link.poisoned = true; }
+            taskEXIT_CRITICAL();
+            Drop(handle, "window_closed");
+        }
+        return;
+    }
     if (!connected)
     {
-        if (was_open && !window_open) { (void)W6X_Ble_AdvStop(); }
         if (restart_advertising && window_open &&
             (TickType_t)(xTaskGetTickCount() - advertising_tick) >= pdMS_TO_TICKS(1000U))
         {
@@ -628,7 +696,11 @@ void APP_ProvisionPoll(void)
             (void)W6X_Ble_AdvStop();
             W6X_Status_t result = W6X_Ble_AdvStart();
             app_wifi_diagnostics.ble_adv_status = (uint32_t)result;
-            if (result == W6X_STATUS_OK) { restart_advertising = false; }
+            if (result == W6X_STATUS_OK)
+            {
+                restart_advertising = false;
+                PublishEnabled(true);
+            }
         }
         return;
     }

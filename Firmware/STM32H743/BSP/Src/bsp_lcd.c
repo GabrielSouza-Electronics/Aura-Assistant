@@ -11,6 +11,10 @@
 
 static ST7701S_Object_t lcd_controller;
 static bool lcd_initialized;
+static volatile bool lcd_backlight_enabled;
+static volatile uint8_t lcd_brightness = 100U;
+static uint8_t lcd_pwm_phase;
+static uint8_t lcd_pwm_duty;
 static volatile uint32_t lcd_serial_clock_edges;
 static volatile uint32_t lcd_command_count;
 
@@ -132,6 +136,7 @@ BSP_LCD_Status_t BSP_LCD_Init(void)
     ST7701S_Status_t status;
 
     lcd_initialized = false;
+    lcd_backlight_enabled = false;
     lcd_serial_clock_edges = 0U;
     lcd_command_count = 0U;
 
@@ -171,10 +176,36 @@ BSP_LCD_Status_t BSP_LCD_SetBacklight(bool enabled)
         return BSP_LCD_ERROR_NOT_INITIALIZED;
     }
 
-    HAL_GPIO_WritePin(LCD_BL_GPIO_Port,
-                      LCD_BL_Pin,
-                      enabled ? BSP_LCD_BACKLIGHT_ON : BSP_LCD_BACKLIGHT_OFF);
+    /* ISR owns the PWM phase. Disabling must also take effect immediately. */
+    lcd_backlight_enabled = enabled;
+    if (!enabled)
+    { HAL_GPIO_WritePin(LCD_BL_GPIO_Port, LCD_BL_Pin, BSP_LCD_BACKLIGHT_OFF); }
     return BSP_LCD_OK;
+}
+
+BSP_LCD_Status_t BSP_LCD_SetBrightness(uint8_t percent)
+{
+    if ((percent < 10U) || (percent > 100U) || ((percent % 10U) != 0U))
+    { return BSP_LCD_ERROR_INVALID_ARGUMENT; }
+    if (!lcd_initialized) { return BSP_LCD_ERROR_NOT_INITIALIZED; }
+    lcd_brightness = percent;
+    return BSP_LCD_OK;
+}
+
+uint8_t BSP_LCD_GetBrightness(void) { return lcd_brightness; }
+
+void BSP_LCD_BacklightTick1ms(void)
+{
+    if (!lcd_backlight_enabled) { lcd_pwm_phase = 0U; return; }
+    /* REV01 PG1 -> STLD40D EN. Datasheet Rev 7 section 5.3 permits low
+       frequency PWM. 10 x 1 ms = 100 Hz, with 10% duty steps. Validate
+       flicker/current on this PCB; duty is not calibrated luminance.
+       Latch changes at a period boundary to avoid malformed pulses. */
+    if (lcd_pwm_phase == 0U) { lcd_pwm_duty = lcd_brightness / 10U; }
+    HAL_GPIO_WritePin(LCD_BL_GPIO_Port, LCD_BL_Pin,
+                      lcd_pwm_phase < lcd_pwm_duty ? BSP_LCD_BACKLIGHT_ON
+                                                  : BSP_LCD_BACKLIGHT_OFF);
+    lcd_pwm_phase = (uint8_t)((lcd_pwm_phase + 1U) % 10U);
 }
 
 BSP_LCD_Status_t BSP_LCD_WriteCommand(uint8_t command,
@@ -211,7 +242,7 @@ BSP_LCD_Status_t BSP_LCD_InitController(void)
     }
 
     /* Keep the backlight off until a valid RGB framebuffer is configured. */
-    HAL_GPIO_WritePin(LCD_BL_GPIO_Port, LCD_BL_Pin, BSP_LCD_BACKLIGHT_OFF);
+    (void)BSP_LCD_SetBacklight(false);
     return BSP_LCD_FromComponentStatus(
         ST7701S_InitDWIN_LI48480T028BA3098(&lcd_controller));
 }

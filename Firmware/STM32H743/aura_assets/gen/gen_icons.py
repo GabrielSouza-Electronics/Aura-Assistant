@@ -39,7 +39,7 @@ OUT = _os.path.join(_HERE, "icons")
 OUT_RING = _os.path.join(_HERE, "ring")
 
 SIZES = [36, 48, 64]
-SS = 5
+SS = 6
 NAMES = ["settings", "tasks", "reminders", "calendar", "chat"]
 
 C_LOW, C_MID, C_HIGH = (16, 72, 158), (78, 196, 252), (240, 253, 255)

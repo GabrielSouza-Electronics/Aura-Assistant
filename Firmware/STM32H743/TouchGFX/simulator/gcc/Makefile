@@ -20,8 +20,8 @@ all clean assets:
 $(error Spaces not allowed in path)
 else
 
-ADDITIONAL_SOURCES := 
-ADDITIONAL_INCLUDE_PATHS := 
+ADDITIONAL_SOURCES := ../aura_assets/compiled/startup/StartupAssets.cpp ../aura_assets/compiled/typography/TypographyHints.cpp ../Components/Calendar/calendar_data.c ../aura_assets/compiled/calendar/CalendarAssets.cpp
+ADDITIONAL_INCLUDE_PATHS := ../aura_assets/compiled/startup ../aura_assets/compiled/typography ../Components/Calendar ../aura_assets/compiled/calendar
 ADDITIONAL_LIBRARY_PATHS := 
 ADDITIONAL_LIBRARIES :=
 export ADDITIONAL_SOURCES ADDITIONAL_INCLUDE_PATHS ADDITIONAL_LIBRARY_PATHS ADDITIONAL_LIBRARIES

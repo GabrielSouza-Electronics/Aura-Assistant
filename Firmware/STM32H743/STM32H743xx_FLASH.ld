@@ -248,6 +248,14 @@ SECTIONS
     . = ALIGN(4);
   } >RAM_D3
 
+  /* Calendar HTTP scratch and static worker stack, cleared by its owner. */
+  .calendar (NOLOAD) :
+  {
+    . = ALIGN(8);
+    *(.calendar)
+    . = ALIGN(8);
+  } >RAM_D3
+
  
    /* TouchGFX Framebuffer in AXI SRAM D1 */
   TouchGFX_Framebuffer (NOLOAD) :

@@ -57,7 +57,7 @@ with tempfile.TemporaryDirectory(prefix='aura_provision_') as directory:
                     str(root / 'tests/test_provisioning.c'), '-o', str(exe)], check=True)
     for scenario in ('happy', 'security', 'timeout', 'overflow', 'oversize',
                      'scan_timeout', 'send_failure', 'stale_session', 'wifi_failure',
-                     'rpa_pairing', 'mtu', 'drop_once'):
+                     'rpa_pairing', 'mtu', 'drop_once', 'settings'):
         subprocess.run([str(exe), scenario], check=True)
     # Compile the actual vendor functions without the unrelated HTTP/MQTT stack.
     source = (root / 'Middlewares/ST/ST67W6X_Network_Driver/Core/w6x_wifi.c').read_text()

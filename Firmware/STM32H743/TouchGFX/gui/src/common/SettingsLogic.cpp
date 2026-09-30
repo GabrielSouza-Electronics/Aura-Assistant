@@ -79,7 +79,7 @@ void SettingsLogic::action(int dir)
 {
     if (dir > 0)
     {
-        if (!editing)
+        if (!editing && focus != 0) /* Wi-Fi is a read-only connection label. */
         {
             editing = true;
             vpos = vlast = 0.0f;
@@ -127,7 +127,11 @@ void SettingsLogic::tick(bool active, bool handPresent, float handX,
 
     /* --- horizontal: entrar / voltar (mesmo ACT_* do carrossel) ------- */
     const bool horizontal = present && fabsf(x) >= ACT_THRESHOLD &&
-                            fabsf(x) > fabsf(y);
+                            fabsf(x) >= fabsf(y);
+    const int dir = (x > 0.0f) ? 1 : -1;
+    /* At 5 Hz the sensor can skip the neutral position between right and
+       left. A reversal rearms; holding the same direction cannot exit twice. */
+    if (horizontal && dir != actDir) actArmed = true;
     if (!horizontal)
     {
         actHold = 0;
@@ -135,7 +139,6 @@ void SettingsLogic::tick(bool active, bool handPresent, float handX,
     }
     else if (actArmed)
     {
-        const int dir = (x > 0.0f) ? 1 : -1;
         if (dir != actDir) actHold = 0;
         actDir = dir;
         if (++actHold >= ACT_HOLD)
@@ -145,7 +148,8 @@ void SettingsLogic::tick(bool active, bool handPresent, float handX,
             actArmed = false;
         }
     }
-    if (live && click && handPresent) action(1);
+    /* Back has priority over a simultaneous proximity click. */
+    if (live && click && handPresent && !horizontal) action(1);
 
     /* --- vertical: mesmo joystick do giro do carrossel ---------------- */
     const float vy = horizontal ? 0.0f : y;

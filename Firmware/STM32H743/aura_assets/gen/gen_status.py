@@ -26,7 +26,7 @@ import os as _os
 _HERE = _os.path.dirname(_os.path.abspath(__file__))
 OUT = _os.path.join(_HERE, "status")
 
-SS = 5
+SS = 6
 C_LOW, C_MID, C_HIGH = (16, 76, 165), (86, 200, 252), (243, 253, 255)
 
 

@@ -43,14 +43,14 @@ typedef struct
     int8_t y; /* Filtered -10..10; zero is neutral. */
     uint16_t z_mm;
     int8_t raw_x;
-    int8_t raw_y; /* Oriented sensor centroid, before temporal filtering. */
+    int8_t raw_y; /* Oriented nearest-depth centroid, before temporal filtering. */
     uint16_t raw_z_mm;
     int8_t delta_x;
     int8_t delta_y;
     int16_t delta_z_mm;
     uint8_t menu_speed; /* abs(filtered X), 0..10; zero when hand is inactive. */
-    uint8_t valid_zone_count;
-    uint8_t confidence_percent;
+    uint8_t valid_zone_count; /* Zones tied at the nearest valid distance. */
+    uint8_t confidence_percent; /* Selected-zone coverage, not target certainty. */
     uint8_t lost_frame_count;
 } APP_HandTracking_t;
 

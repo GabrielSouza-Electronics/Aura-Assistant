@@ -3,16 +3,19 @@
 #include "FreeRTOS.h"
 #include "task.h"
 #include "bsp_audio_out.h"
+#include "bsp_lcd.h"
+#include "app_provisioning.h"
+#include <stdio.h>
+#include <string.h>
 
-/* Until the owning module publishes a real value, the menu shows "--"
-   rather than a guessed state. Version starts at 1 so the GUI picks the
-   placeholder up on its first read. */
+/* Initial states match boot: BLE closed, Wi-Fi disconnected, backlight at
+   full duty. Owners publish changes. Version 1 forces the first GUI read. */
 static struct
 {
     char text[APP_UI_SETTING_TEXT_SIZE];
     uint32_t version;
 } app_ui_settings[APP_UI_SETTING_TEXT_COUNT] = {
-    { "--", 1U }, { "--", 1U }, { "--", 1U }
+    { "DISCONNECTED", 1U }, { "OFF", 1U }, { "100%", 1U }
 };
 
 void APP_UISettings_SetText(APP_UISetting_t item, const char *text)
@@ -32,6 +35,8 @@ void APP_UISettings_SetText(APP_UISetting_t item, const char *text)
     copy[n] = '\0';
 
     taskENTER_CRITICAL();
+    if (strcmp(app_ui_settings[item].text, copy) == 0)
+    { taskEXIT_CRITICAL(); return; }
     for (size_t i = 0U; i <= n; ++i)
     {
         app_ui_settings[item].text[i] = copy[i];
@@ -73,10 +78,12 @@ uint8_t APP_UISettings_GetVolume(void)
 
 void APP_UISettings_Request(APP_UISetting_t item, int8_t delta)
 {
+    if (delta == 0) { return; }
+    const int32_t step = delta > 0 ? 1 : -1;
     if (item == APP_UI_SETTING_SOUND)
     {
         /* SetVolume clamps the top; clamp the bottom before the cast. */
-        int32_t volume = (int32_t)BSP_AUDIO_OUT_GetVolume() + delta;
+        int32_t volume = (int32_t)BSP_AUDIO_OUT_GetVolume() + step;
         if (volume < 0)
         {
             volume = 0;
@@ -84,15 +91,18 @@ void APP_UISettings_Request(APP_UISetting_t item, int8_t delta)
         BSP_AUDIO_OUT_SetVolume((uint8_t)volume);
         return;
     }
-    if ((unsigned)item < (unsigned)APP_UI_SETTING_TEXT_COUNT)
+    if (item == APP_UI_SETTING_BRIGHTNESS)
     {
-        APP_UISettings_OnRequest(item, delta);
+        int32_t brightness = (int32_t)BSP_LCD_GetBrightness() + step * 10;
+        if (brightness < 10) { brightness = 10; }
+        if (brightness > 100) { brightness = 100; }
+        if (BSP_LCD_SetBrightness((uint8_t)brightness) == BSP_LCD_OK)
+        {
+            char text[5];
+            (void)snprintf(text, sizeof(text), "%u%%", (unsigned)brightness);
+            APP_UISettings_SetText(item, text);
+        }
     }
-}
-
-__attribute__((weak)) void APP_UISettings_OnRequest(APP_UISetting_t item,
-                                                    int8_t delta)
-{
-    (void)item;
-    (void)delta;
+    else if (item == APP_UI_SETTING_BLUETOOTH)
+    { APP_ProvisionRequestEnabled(step > 0); }
 }

@@ -11,6 +11,8 @@ int critical_depth;
 volatile APP_WiFiDiagnostics_t app_wifi_diagnostics;
 static uint32_t ticks;
 static bool adv_params_set;
+static unsigned adv_starts, adv_stops;
+static bool fail_adv, fail_adv_stop;
 static char output[16384];
 static unsigned output_length, connects, disconnects, scans, deletes, restored;
 static bool fail_send, fail_connect, silent_scan, drop_during_send, silent_disconnect;
@@ -57,8 +59,8 @@ W6X_Status_t W6X_Ble_SetAdvParam(uint32_t low, uint32_t high, W6X_Ble_AdvType_e 
 W6X_Status_t W6X_Ble_SetAdvData(const char *s) { assert(adv_params_set && !strcmp(s,"11073412908f6e2c7d9a3c4fa3b501a0577e050841757261") && strlen(s)/2U<=31U && !critical_depth); return 0; }
 W6X_Status_t W6X_Ble_SetScanRespData(const char *s) { (void)s; assert(0 && "SDK 2.0.89 rejects AdvStart after a custom scan response"); return 0; }
 W6X_Status_t W6X_Ble_Disconnect(uint32_t h) { assert(h==0 && !critical_depth); ++disconnects; if(!silent_disconnect) event(W6X_BLE_EVT_DISCONNECTED_ID); return 0; }
-W6X_Status_t W6X_Ble_AdvStop(void) { assert(!critical_depth); return 0; }
-W6X_Status_t W6X_Ble_AdvStart(void) { assert(!critical_depth); return 0; }
+W6X_Status_t W6X_Ble_AdvStop(void) { assert(!critical_depth); ++adv_stops; return fail_adv_stop ? 1 : 0; }
+W6X_Status_t W6X_Ble_AdvStart(void) { assert(!critical_depth); ++adv_starts; return fail_adv ? 1 : 0; }
 W6X_Status_t W6X_Ble_SecurityStart(uint8_t h,uint8_t level) { assert(h==0 && level==2 && !critical_depth); return 0; }
 static unsigned bond_queries;
 W6X_Status_t W6X_Ble_SecurityGetBondedDeviceList(W6X_Ble_Bonded_Devices_Result_t *r)
@@ -94,6 +96,9 @@ static void request(const char *data)
 static void start(bool paired)
 {
     assert(APP_ProvisionInit()==0);
+    assert(!APP_ProvisionIsEnabled());
+    APP_ProvisionRequestEnabled(true); APP_ProvisionPoll();
+    assert(APP_ProvisionIsEnabled());
     event(W6X_BLE_EVT_CONNECTED_ID); APP_ProvisionPoll();
     event(W6X_BLE_EVT_NOTIFICATION_STATUS_ENABLED_ID);
     if(paired) event(W6X_BLE_EVT_PAIRING_COMPLETED_ID);
@@ -129,7 +134,38 @@ int main(int argc,char **argv)
         assert(strstr(output,"frame_timeout")); chunk("1}\n",3,true);
         request("{\"v\":1,\"id\":1,\"cmd\":\"get_status\"}\n"); assert(strstr(output,"\"event\":\"status\""));
         ticks=300001;
-        request("{\"v\":1,\"id\":2,\"cmd\":\"scan\"}\n"); assert(!scans && strstr(output,"provisioning_closed"));
+        APP_ProvisionPoll();
+        assert(!scans && disconnects==1 && !APP_ProvisionIsEnabled());
+    }
+    else if(!strcmp(argv[1],"settings"))
+    {
+        assert(APP_ProvisionInit()==0); APP_ProvisionPoll();
+        assert(!APP_ProvisionIsEnabled() && adv_starts==0);
+        fail_adv=true;
+        APP_ProvisionRequestEnabled(true); APP_ProvisionPoll();
+        assert(!APP_ProvisionIsEnabled() && adv_starts==1);
+        fail_adv=false; ticks+=1000; APP_ProvisionPoll();
+        assert(APP_ProvisionIsEnabled() && adv_starts==2);
+        ticks=299999; APP_ProvisionRequestEnabled(true); APP_ProvisionPoll();
+        assert(APP_ProvisionIsEnabled()); // Repeated UP does not extend window.
+        ticks=300000; APP_ProvisionPoll();
+        assert(!APP_ProvisionIsEnabled() && !app_provision_diagnostics.window_open);
+        APP_ProvisionRequestEnabled(true); APP_ProvisionPoll();
+        assert(APP_ProvisionIsEnabled()); // Reopen without reboot.
+        event(W6X_BLE_EVT_CONNECTED_ID); APP_ProvisionPoll();
+        APP_ProvisionRequestEnabled(false); APP_ProvisionPoll();
+        assert(!APP_ProvisionIsEnabled() && disconnects==1);
+        APP_ProvisionPoll();
+        unsigned starts=adv_starts;
+        ticks+=2000; APP_ProvisionPoll(); assert(adv_starts==starts);
+        assert(adv_stops>0);
+        APP_ProvisionRequestEnabled(true); APP_ProvisionPoll();
+        fail_adv_stop=true;
+        APP_ProvisionRequestEnabled(false); APP_ProvisionPoll();
+        unsigned stops=adv_stops;
+        APP_ProvisionPoll(); assert(adv_stops==stops);
+        fail_adv_stop=false; ticks+=1000; APP_ProvisionPoll();
+        assert(adv_stops==stops+1 && !APP_ProvisionIsEnabled());
     }
     else if(!strcmp(argv[1],"overflow"))
     {

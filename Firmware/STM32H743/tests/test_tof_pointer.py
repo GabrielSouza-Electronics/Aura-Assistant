@@ -1,7 +1,7 @@
 """Host integration test: python tests/test_tof_pointer.py --compiler <g++>.
 
-Compiles the tracker, Model, menu and disabled touch adapter; only the RTOS clock and
-critical sections are stubbed. Does not validate RTOS scheduling or hardware.
+Compiles the tracker, Model, menu and disabled touch adapter. RTOS primitives and
+unrelated application services are stubbed. Does not validate scheduling or hardware.
 """
 import argparse
 from pathlib import Path
@@ -29,14 +29,16 @@ TickType_t xTaskGetTickCount(void);
 }
 #endif
 """)
-    (tmp / "test.cpp").write_text(r"""#include <cassert>
-#include <cmath>
-#include <cstdio>
+    (tmp / "test.cpp").write_text(r"""#include <assert.h>
+#include <math.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include "app_hand_tracking.h"
 extern "C" {
 #include "app.h"
 }
 #include "app_ui_audio.h"
+#include "app_ui_settings.h"
 #include "STM32TouchController.hpp"
 #include <gui/model/Model.hpp>
 #include <gui/model/ModelListener.hpp>
@@ -47,6 +49,11 @@ extern "C" void APP_UIAudio_Request(APP_UIAudioEvent_t event) { requested = even
 extern "C" void APP_LED_SetHeroBreath(uint8_t) {}
 extern "C" void APP_LED_SetCarousel(uint16_t, uint8_t) {}
 extern "C" void APP_LED_MenuEnterPulse(void) {}
+extern "C" uint8_t APP_WiFi_GetSignalLevel(void) { return 0; }
+extern "C" bool APP_UISettings_ReadText(APP_UISetting_t, uint32_t*, char*, size_t)
+{ return false; }
+extern "C" uint8_t APP_UISettings_GetVolume(void) { return 5; }
+extern "C" void APP_UISettings_Request(APP_UISetting_t, int8_t) {}
 static APP_InitStatus_t startupStatus = APP_INIT_WAITING_FOR_TOF;
 static unsigned startupCompletions;
 extern "C" APP_InitStatus_t APP_GetInitStatus(void) { return startupStatus; }
@@ -123,6 +130,45 @@ int main() {
     now = 498; model.tick(); assert(input.present);
     now = 499; model.tick(); assert(!input.present);
 
+    // A closer fingertip wins over all 15 palm zones, even by just 1 mm.
+    const int gaps[] = {1, 80, 200};
+    for (int finger = 0; finger < 16; ++finger) {
+        for (int gap : gaps) {
+            BSP_TOF_Data_t data = {};
+            for (int zone = 0; zone < 16; ++zone) {
+                data.targets_detected[zone] = 1;
+                data.target_status[zone] = 5;
+                data.distance_mm[zone] = 100 + gap;
+            }
+            data.distance_mm[finger] = 100;
+            APP_HandTracking_Reset();
+            APP_HandTracking_Process(&data); model.tick();
+            const int coords[] = {-10, -3, 3, 10};
+            assert(app_hand_tracking.raw_x == coords[finger % 4]);
+            assert(app_hand_tracking.raw_y == coords[finger / 4]);
+            assert(app_hand_tracking.raw_z_mm == 100);
+            assert(app_hand_tracking.valid_zone_count == 1);
+            assert(input.present);
+        }
+    }
+    // Invalid near returns cannot steal the pointer; equal minima share X/Y.
+    BSP_TOF_Data_t nearest = {};
+    nearest.targets_detected[0] = nearest.targets_detected[15] = 1;
+    nearest.target_status[0] = 4; nearest.distance_mm[0] = 20;
+    nearest.target_status[15] = 9; nearest.distance_mm[15] = 100;
+    APP_HandTracking_Reset(); APP_HandTracking_Process(&nearest);
+    assert(app_hand_tracking.raw_x == 10 && app_hand_tracking.raw_y == 10);
+    nearest.target_status[0] = 5; nearest.distance_mm[0] = 100;
+    APP_HandTracking_Process(&nearest);
+    assert(app_hand_tracking.raw_x == 0 && app_hand_tracking.raw_y == 0);
+    assert(app_hand_tracking.valid_zone_count == 2);
+    nearest.distance_mm[0] = 0;
+    APP_HandTracking_Process(&nearest);
+    assert(app_hand_tracking.raw_x == 10);
+    nearest.distance_mm[0] = 20; nearest.targets_detected[0] = 0;
+    APP_HandTracking_Process(&nearest);
+    assert(app_hand_tracking.raw_x == 10);
+
     // Native Y range: no offset or gain, zero is neutral.
     const uint16_t yMasks[] = {0x000F, 0x400B, 0xFFFF, 0xF000};
     const int yAxes[] = {-10, -5, 0, 10};
@@ -130,7 +176,7 @@ int main() {
         APP_HandTracking_Reset(); frame(100, yMasks[i]); model.tick();
         assert(app_hand_tracking.raw_y == yAxes[i]);
         assert(app_hand_tracking.y == yAxes[i]);
-        assert(input.present && std::fabs(input.y - yAxes[i]/10.0f) < 0.000001f);
+        assert(input.present && fabs(input.y - yAxes[i]/10.0f) < 0.000001f);
     }
 
     // All sensor magnitudes reach the Model unchanged except normalization.
@@ -138,15 +184,15 @@ int main() {
     const int axes[] = {-10,-5,-3,0,3,5,10};
     for (int d = 0; d < 7; ++d) {
         APP_HandTracking_Reset(); frame(100, masks[d]); model.tick();
-        assert(input.present && std::fabs(input.x - axes[d] / 10.0f) < 0.000001f);
-        assert(std::fabs(input.y - app_hand_tracking.y / 10.0f) < 0.000001f);
+        assert(input.present && fabs(input.x - axes[d] / 10.0f) < 0.000001f);
+        assert(fabs(input.y - app_hand_tracking.y / 10.0f) < 0.000001f);
         assert(app_hand_tracking.menu_speed == (axes[d] < 0 ? -axes[d] : axes[d]));
         MenuLogic menu;
         menu.tick(input.present, input.x, input.y);
-        assert(std::fabs(menu.getAngle() - (-0.055f * input.x)) < 0.000001f);
+        assert(fabs(menu.getAngle() - (-0.055f * input.x)) < 0.000001f);
         const float angle = menu.getAngle();
         for (int i = 0; i < 10; ++i) menu.tick(true, 0, 0);
-        assert(std::fabs(menu.getAngle()) <= std::fabs(angle));
+        assert(fabs(menu.getAngle()) <= fabs(angle));
         const float centeredAngle = menu.getAngle();
         menu.tick(false, 1, -1);
         assert(menu.getAngle() == centeredAngle); // Release cannot rotate.
@@ -156,11 +202,11 @@ int main() {
         for (int vertical = -10; vertical <= 10; ++vertical) {
             MenuLogic menu;
             menu.tick(true, axis / 10.0f, vertical / 10.0f);
-            const float expected = (std::abs(axis) <= 2 && vertical >= -5)
+            const float expected = (abs(axis) <= 2 && vertical >= -5)
                 ? 0.0f : -0.055f * axis / 10.0f;
-            assert(std::fabs(menu.getAngle() - expected) < 0.000001f);
+            assert(fabs(menu.getAngle() - expected) < 0.000001f);
             menu.tick(true, -axis / 10.0f, vertical / 10.0f);
-            assert(std::fabs(menu.getAngle()) < 0.000001f);
+            assert(fabs(menu.getAngle()) < 0.000001f);
         }
     }
     MenuLogic dwell;
@@ -171,14 +217,14 @@ int main() {
     snap.tick(true,0.2f,0);
     for (int i=0; i<55; ++i) snap.tick(true,0.3f,0);
     assert(snap.getSelected() == selected && snap.getScreen() == -1);
-    assert(std::fabs(snap.getAngle() + selected * 6.28318530718f / ML_COUNT) < 0.0031f);
+    assert(fabs(snap.getAngle() + selected * 6.28318530718f / ML_COUNT) < 0.0031f);
     float before = snap.getAngle();
     snap.tick(true,0.4f,0);
-    assert(std::fabs(snap.getAngle() - before + 0.022f) < 0.000001f);
+    assert(fabs(snap.getAngle() - before + 0.022f) < 0.000001f);
     before = snap.getAngle();
     for (int i=0; i<200; ++i) snap.tick(true,0.3f,0);
     assert(snap.getScreen() == -1);
-    assert(std::fabs(snap.getAngle() - before + 3.3f) < 0.0001f);
+    assert(fabs(snap.getAngle() - before + 3.3f) < 0.0001f);
     // Strict threshold, one click per approach, hysteresis and stale samples.
     APP_HandTracking_Reset();
     frame(40); model.tick(); assert(input.clicks == 0);

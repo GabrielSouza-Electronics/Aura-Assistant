@@ -1,5 +1,7 @@
 #include "app.h"
 #include "app_provisioning.h"
+#include "app_ui_settings.h"
+#include "app_calendar.h"
 
 #include "FreeRTOS.h"
 #include "task.h"
@@ -63,12 +65,16 @@ static void APP_WiFiUpdateSignal(void)
     }
     if (state != W6X_WIFI_STATE_STA_GOT_IP && state != W6X_WIFI_STATE_STA_CONNECTED)
     {
+        APP_UISettings_SetText(APP_UI_SETTING_WIFI, "DISCONNECTED");
         app_wifi_diagnostics.wifi_rssi = INT32_MIN;
         APP_WiFiSetSignalLevel(0U);
         return;
     }
     app_wifi_diagnostics.wifi_rssi = info.Rssi;
-    APP_WiFiSetSignalLevel((info.Rssi >= APP_WIFI_RSSI_3_BARS) ? 3U :
+    info.SSID[sizeof(info.SSID) - 1U] = '\0';
+    APP_UISettings_SetText(APP_UI_SETTING_WIFI, (const char *)info.SSID);
+    APP_WiFiSetSignalLevel(state != W6X_WIFI_STATE_STA_GOT_IP ? 0U :
+                           (info.Rssi >= APP_WIFI_RSSI_3_BARS) ? 3U :
                            (info.Rssi >= APP_WIFI_RSSI_2_BARS) ? 2U : 1U);
 }
 
@@ -158,6 +164,8 @@ void APP_WiFiTask(void)
     bool radio_ready = false;
     bool had_ip = false;
     TickType_t signal_tick = 0U;
+    bool had_connection = false;
+    bool ble_shown = false;
 
     app_wifi_diagnostics.bsp_status = BSP_WIFI_Init();
     app_wifi_diagnostics.powered = BSP_WIFI_IsPowered();
@@ -227,6 +235,7 @@ void APP_WiFiTask(void)
         goto idle;
     }
     radio_ready = true; /* W6X Wi-Fi station queries are now safe */
+    (void)APP_CalendarStart();
 
     app_wifi_diagnostics.ble_init_status = (uint32_t)W6X_Ble_Init(
         W6X_BLE_MODE_SERVER, app_wifi_ble_rx_buffer,
@@ -246,13 +255,7 @@ void APP_WiFiTask(void)
 
     app_wifi_diagnostics.ble_address_status =
         (uint32_t)W6X_Ble_GetBDAddress((uint8_t *)app_wifi_diagnostics.ble_address);
-    app_wifi_diagnostics.ble_adv_status = (uint32_t)W6X_Ble_AdvStart();
-    if (APP_WiFiStatusFailed(
-            (W6X_Status_t)app_wifi_diagnostics.ble_adv_status))
-    {
-        goto idle;
-    }
-    app_wifi_diagnostics.state = APP_WIFI_STATE_BLE_ADVERTISING;
+    /* Settings ON starts advertising and the provisioning window. */
 
 idle:
     for (;;)
@@ -262,10 +265,21 @@ idle:
         app_wifi_diagnostics.ready = BSP_WIFI_IsReady();
 
         if (provisioning_ready) { APP_ProvisionPoll(); }
+        const bool ble_enabled = APP_ProvisionIsEnabled();
+        if (ble_enabled != ble_shown)
+        {
+            ble_shown = ble_enabled;
+            APP_UISettings_SetText(APP_UI_SETTING_BLUETOOTH,
+                                   ble_enabled ? "ON" : "OFF");
+        }
 
-        /* No IP: crossed icon immediately, no AT traffic. With IP: RSSI poll,
-         * and once right away when the address is obtained. */
+        /* Publish the associated SSID even while DHCP is in progress;
+         * refresh on association/IP acquisition and then every 3 seconds. */
         const bool has_ip = app_wifi_diagnostics.wifi_has_ip;
+        APP_CalendarSetOnline(radio_ready && has_ip);
+        const bool connected = app_wifi_diagnostics.wifi_connected || has_ip;
+        if (!connected && had_connection)
+        { APP_UISettings_SetText(APP_UI_SETTING_WIFI, "DISCONNECTED"); }
         if (!has_ip)
         {
             if (app_wifi_signal_level != 0U)
@@ -274,14 +288,16 @@ idle:
                 APP_WiFiSetSignalLevel(0U);
             }
         }
-        else if (radio_ready &&
-                 (!had_ip || (TickType_t)(xTaskGetTickCount() - signal_tick) >=
+        if (connected && radio_ready &&
+                 (!had_connection || (has_ip && !had_ip) ||
+                  (TickType_t)(xTaskGetTickCount() - signal_tick) >=
                                  pdMS_TO_TICKS(APP_WIFI_SIGNAL_POLL_MS)))
         {
             signal_tick = xTaskGetTickCount();
             APP_WiFiUpdateSignal();
         }
         had_ip = has_ip;
+        had_connection = connected;
         osDelay(10U);
     }
 }

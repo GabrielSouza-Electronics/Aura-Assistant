@@ -12,7 +12,6 @@
 #define APP_HAND_PRESENCE_DISTANCE_MM    500U
 #define APP_HAND_TRACKING_MAX_DISTANCE_MM 1000U
 #define APP_HAND_NO_TARGET_Z_MM          1001U
-#define APP_HAND_SURFACE_WINDOW_MM       200U
 #define APP_HAND_LOST_FRAME_HOLD_COUNT   3U
 
 /* Change either value to 1 after the physical orientation test if an axis is
@@ -214,10 +213,8 @@ void APP_HandTracking_Reset(void)
 void APP_HandTracking_Process(const BSP_TOF_Data_t *tof_data)
 {
     uint16_t nearest_mm = APP_HAND_NO_TARGET_Z_MM;
-    uint32_t weighted_x = 0U;
-    uint32_t weighted_y = 0U;
-    uint32_t weighted_z = 0U;
-    uint32_t total_weight = 0U;
+    int32_t sum_x = 0;
+    int32_t sum_y = 0;
     uint8_t valid_zones = 0U;
     int8_t raw_x;
     int8_t raw_y;
@@ -253,17 +250,18 @@ void APP_HandTracking_Process(const BSP_TOF_Data_t *tof_data)
         const uint16_t distance = (uint16_t)tof_data->distance_mm[zone];
         const uint32_t row = zone / 4U;
         const uint32_t column = zone % 4U;
-        uint32_t weight;
         int32_t zone_x;
         int32_t zone_y;
 
         if (!APP_HandTracking_IsValidZone(tof_data, zone) ||
-            (distance > (nearest_mm + APP_HAND_SURFACE_WINDOW_MM)))
+            (distance != nearest_mm))
         {
             continue;
         }
 
-        weight = (uint32_t)(nearest_mm + APP_HAND_SURFACE_WINDOW_MM - distance + 1U);
+        /* Only the nearest depth controls the pointer. Farther palm zones
+           must not pull it away from the fingertip. Equal minima share
+           their centroid because this frame cannot distinguish them. */
         zone_x = app_hand_axis_coordinates[column];
         zone_y = app_hand_axis_coordinates[3U - row];
 #if APP_HAND_SWAP_XY
@@ -279,14 +277,12 @@ void APP_HandTracking_Process(const BSP_TOF_Data_t *tof_data)
 #if APP_HAND_FLIP_Y
         zone_y = -zone_y;
 #endif
-        weighted_x += (uint32_t)((zone_x + APP_HAND_AXIS_LIMIT) * (int32_t)weight);
-        weighted_y += (uint32_t)((zone_y + APP_HAND_AXIS_LIMIT) * (int32_t)weight);
-        weighted_z += (uint32_t)distance * weight;
-        total_weight += weight;
+        sum_x += zone_x;
+        sum_y += zone_y;
         ++valid_zones;
     }
 
-    if (total_weight == 0U)
+    if (valid_zones == 0U)
     {
         APP_HandTracking_PublishNoTarget();
         ++app_hand_tracking.update_count;
@@ -295,10 +291,10 @@ void APP_HandTracking_Process(const BSP_TOF_Data_t *tof_data)
     }
 
     raw_x = APP_HandTracking_ClampAxis(
-        (int32_t)(weighted_x / total_weight) - APP_HAND_AXIS_LIMIT);
+        sum_x / (int32_t)valid_zones);
     raw_y = APP_HandTracking_ClampAxis(
-        (int32_t)(weighted_y / total_weight) - APP_HAND_AXIS_LIMIT);
-    raw_z = (uint16_t)(weighted_z / total_weight);
+        sum_y / (int32_t)valid_zones);
+    raw_z = nearest_mm;
     if (raw_z <= APP_HAND_MIN_DISTANCE_MM)
     {
         raw_z = 0U;

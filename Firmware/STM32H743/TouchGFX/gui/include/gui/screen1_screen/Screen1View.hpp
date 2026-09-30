@@ -8,7 +8,9 @@
 #include <gui/common/MenuLogic.hpp>
 #include <gui/common/SettingsLogic.hpp>
 #include <gui/common/GlyphText.hpp>
+#include <gui/common/CalendarWidget.hpp>
 #include <touchgfx/widgets/Image.hpp>
+#include <touchgfx/widgets/PixelDataWidget.hpp>
 #include <touchgfx/events/ClickEvent.hpp>
 #include <touchgfx/events/DragEvent.hpp>
 
@@ -45,6 +47,7 @@ public:
 protected:
     CircuitField field;
     MenuLogic    menu;
+    CalendarWidget calendar;
 
     /* Menu Settings: widgets criados em codigo, como o field. Ficam sobre
        as particulas e sob o titulo; as caixas sao translucidas.         */
@@ -52,7 +55,7 @@ protected:
     touchgfx::Image setGlow;
     touchgfx::Image setRow[SL_ROWS];
     GlyphText       setVal[SL_ROWS];
-    GlyphText       setHint;        /* dica de gesto, no lugar do msgState */
+    touchgfx::PixelDataWidget       setHint;        /* dica de gesto, no lugar do msgState */
     const char*     hintText = nullptr;
     touchgfx::Image setSub;
     uint16_t lastRowId[SL_ROWS];
@@ -70,12 +73,15 @@ protected:
     uint16_t lastIconId[5];      /* evita setBitmap redundante             */
 
     void applyStatus();
+    void updateRim();
     void setupSettings();
     void applySettings();
     void handleSettingsEvents();
     enum class StartupStage { Rise, Wait, Dock, Done };
     StartupStage startupStage = StartupStage::Rise;
     uint16_t startupTicks = 0;
+    uint16_t startupAnimationTicks = 0;
+    touchgfx::PixelDataWidget startupText[3];
     int16_t heroHomeX = 0;
     int16_t heroHomeY = 0;
     void setHomeVisible(bool visible);

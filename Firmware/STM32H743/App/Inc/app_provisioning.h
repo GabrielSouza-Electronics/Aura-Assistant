@@ -40,6 +40,10 @@ extern volatile APP_ProvisionDiagnostics app_provision_diagnostics;
 /* Init and Poll run only in APP_WiFiTask. Callbacks never send AT commands. */
 W6X_Status_t APP_ProvisionInit(void);
 void APP_ProvisionPoll(void);
+/* Nonblocking GUI request; the Wi-Fi task owns all BLE commands. ON opens
+ * a five-minute window, OFF closes advertising and the current BLE link. */
+void APP_ProvisionRequestEnabled(bool enabled);
+bool APP_ProvisionIsEnabled(void);
 void APP_ProvisionBleEvent(W6X_event_id_t event_id, void *args,
                            uint8_t *rx_data, size_t rx_capacity);
 void APP_ProvisionScanResult(int32_t status, W6X_WiFi_Scan_Result_t *results);

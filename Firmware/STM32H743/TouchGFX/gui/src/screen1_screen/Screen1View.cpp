@@ -1,3 +1,6 @@
+#include "TypographyHints.hpp"
+#include "StartupAssets.hpp"
+#include <math.h>
 #include <gui/screen1_screen/Screen1View.hpp>
 #include <BitmapDatabase.hpp>
 #include <touchgfx/Color.hpp>
@@ -27,21 +30,11 @@ static const uint16_t LBL_ID[5] = {
     BITMAP_LBL_SETTINGS_ID, BITMAP_LBL_TASKS_ID, BITMAP_LBL_REMINDERS_ID,
     BITMAP_LBL_CALENDAR_ID, BITMAP_LBL_CHAT_ID
 };
-/* Os PNGs estao girados, entao a LARGURA do arquivo e 29 (a altura do
-   texto) e a ALTURA e o comprimento da palavra. Cada rotulo precisa ser
-   recentrado porque as palavras tem comprimentos diferentes.            */
-static const int16_t LBL_W[5] = { 29, 29, 29, 29, 29 };
-static const int16_t LBL_H[5] = { 135, 91, 157, 146, 79 };
+/* Center labels using the installed bitmap dimensions after rotation. */
 
 static const uint16_t MSG_ID[3] = {
     BITMAP_MSG_HOLD_ID, BITMAP_MSG_CANCELLED_ID, BITMAP_MSG_MOVE_ID
 };
-static const int16_t MSG_H[3] = { 140, 99, 167 };
-static const int16_t MSG_BACK_H = 205;
-
-/* textos da tela de espera, ja girados: largura e a altura do texto */
-static const int16_t SB_READY_W = 39,  SB_READY_H = 121;
-static const int16_t SB_WAVE_W  = 17,  SB_WAVE_H  = 134;
 
 static const uint16_t WIFI_ID[4] = {
     BITMAP_WIFI_0_ID, BITMAP_WIFI_1_ID, BITMAP_WIFI_2_ID, BITMAP_WIFI_3_ID
@@ -80,11 +73,9 @@ static const char* const SET_DEMO_TEXT[SET_ROW_SOUND] = {
     "HomeNet", "On", "70%"
 };
 
-/* Dicas de gesto do Settings (GlyphText: texto livre, sem asset novo). */
+/* Fixed 14 px gesture hints; the dynamic value atlas uses 18 px glyphs. */
 static const char* const HINT_LIST = "RIGHT SELECT  LEFT BACK";
 static const char* const HINT_EDIT = "UP/DOWN CHANGE  LEFT DONE";
-static const int16_t HINT_X     = 409;     /* mesmo lugar do msgState      */
-static const int16_t HINT_MAX_W = 300;
 
 static int16_t roundi(float v)
 {
@@ -153,13 +144,15 @@ void Screen1View::setupScreen()
        Ficam onde o rotulo do carrossel aparece depois; um substitui o
        outro conforme a mao chega.                                      */
     sbReady.setBitmap(Bitmap(BITMAP_SB_READY_ID));
-    sbReady.setXY((int16_t)(292 - SB_READY_W / 2),
-                  (int16_t)(239 - SB_READY_H / 2));
+    sbReady.setXY((int16_t)(292 - sbReady.getWidth() / 2),
+                  (int16_t)(239 - sbReady.getHeight() / 2));
     sbWave.setBitmap(Bitmap(BITMAP_SB_WAVE_ID));
-    sbWave.setXY((int16_t)(348 - SB_WAVE_W / 2),
-                 (int16_t)(239 - SB_WAVE_H / 2));
+    sbWave.setXY((int16_t)(348 - sbWave.getWidth() / 2),
+                 (int16_t)(239 - sbWave.getHeight() / 2));
 
     setupSettings();
+    // The existing perimeter rim remains above the calendar content.
+    insert(&battFrame, calendar);
 
     applyStatus();
     heroHomeX = hero.getX();
@@ -167,6 +160,23 @@ void Screen1View::setupScreen()
     startupStage = StartupStage::Rise;
     startupTicks = 0;
     setHomeVisible(false);
+    startupAnimationTicks = 0;
+    const int16_t textY[3] = {347, 388, 409};
+    for (int i = 0; i < 3; ++i)
+    {
+        const StartupSprite& sprite = startupSprites[i == 0 ? 0 : i + 3];
+        startupText[i].setBitmapFormat(Bitmap::ARGB8888);
+        startupText[i].setPixelData(reinterpret_cast<uint8_t*>(const_cast<uint32_t*>(sprite.pixels)));
+        startupText[i].setPosition(textY[i] - sprite.width / 2,
+                                  (480 - sprite.height) / 2, sprite.width, sprite.height);
+        add(startupText[i]);
+    }
+    divLine.setXY(370 - divLine.getWidth() / 2, (480 - divLine.getHeight()) / 2);
+    divSpark.setXY(370 - divSpark.getWidth() / 2, (480 - divSpark.getHeight()) / 2);
+    divLine.setAlpha(255);
+    divSpark.setAlpha(255);
+    divLine.setVisible(true);
+    divSpark.setVisible(true);
     // Assets are rotated: physical bottom is framebuffer +X.
     hero.setXY(480, (480 - hero.getHeight()) / 2);
     hero.setAlpha(255);
@@ -287,9 +297,13 @@ void Screen1View::applySettings()
     if (hint != hintText)
     {
         hintText = hint;
-        setHint.setText(hint, HINT_MAX_W);
+        const TypographyHint& sprite = typographyHints[settings.isEditing() ? 1 : 0];
+        setHint.setBitmapFormat(Bitmap::ARGB8888);
+        setHint.setPixelData(reinterpret_cast<uint8_t*>(const_cast<uint32_t*>(sprite.pixels)));
+        setHint.setWidth(sprite.width);
+        setHint.setHeight(sprite.height);
     }
-    setHint.setXY(HINT_X, (int16_t)((480 - setHint.getHeight()) / 2));
+    setHint.setXY(MSG_CX - setHint.getWidth() / 2, (int16_t)((480 - setHint.getHeight()) / 2));
     const uint8_t ha = (uint8_t)((settings.getRowAlpha(SL_ROWS - 1) * 170) / 255);
     setHint.setAlpha(ha);
     setHint.setVisible(ha > 0);
@@ -363,6 +377,31 @@ void Screen1View::setHomeVisible(bool visible)
 bool Screen1View::tickStartup()
 {
     if (startupStage == StartupStage::Done) return false;
+    // Independent wrapping phase keeps animating during an indefinite sensor wait.
+    startupAnimationTicks = (startupAnimationTicks + 1) % 360;
+    const uint8_t alpha = startupStage == StartupStage::Dock
+        ? (uint8_t)(255U * (36U - startupTicks) / 36U) : 255;
+    if (startupAnimationTicks % 45 == 0)
+    {
+        startupText[0].invalidate();
+        startupText[0].setPixelData(reinterpret_cast<uint8_t*>(const_cast<uint32_t*>(
+            startupSprites[(startupAnimationTicks / 45) % 4].pixels)));
+        startupText[0].invalidate();
+    }
+    for (int i = 0; i < 3; ++i)
+    {
+        if (startupText[i].getAlpha() != alpha)
+        {
+            startupText[i].setAlpha(alpha);
+            startupText[i].invalidate();
+        }
+    }
+    divSpark.invalidate();
+    const int16_t lightX = (int16_t)(240 + 110 * sinf(startupAnimationTicks * 6.2831853f / 360));
+    divSpark.setY(480 - lightX - divSpark.getHeight() / 2);
+    divSpark.setAlpha(alpha);
+    divSpark.invalidate();
+    if (divLine.getAlpha() != alpha) { divLine.setAlpha(alpha); divLine.invalidate(); }
     // Discard gestures collected during bring-up, including proximity clicks.
     handPresent = false;
     previousHandPresent = false;
@@ -404,6 +443,11 @@ bool Screen1View::tickStartup()
         else
         {
             startupStage = StartupStage::Done;
+            for (int i = 0; i < 3; ++i) startupText[i].setVisible(false);
+            divLine.setXY(314, 109);
+            divSpark.setXY(305, 226);
+            divLine.setAlpha(190);
+            divSpark.setAlpha(190);
             setHomeVisible(true);
             presenter->completeStartup();
             return false; // Apply the idle layout before this frame is rendered.
@@ -470,13 +514,24 @@ void Screen1View::handleTickEvent()
     const int previousScreen = menu.getScreen();
     const int previousItem = menu.getSelected();
     const bool wasSettings = (previousScreen == SCREEN_SETTINGS);
+    const bool wasCalendar = (previousScreen == 3);
     const bool click = handClickPending;
     handClickPending = false;
 
     /* Dentro do Settings os gestos sao dele: o eixo vertical move o foco
        (sem "puxar para baixo = voltar") e o clique confirma a linha.  */
-    menu.setVerticalBack(!wasSettings);
-    menu.tick(handPresent, handX, handY, wasSettings ? false : click);
+    menu.setVerticalBack(!wasSettings && !wasCalendar);
+    menu.tick(handPresent, handX, handY, (wasSettings || wasCalendar) ? false : click);
+    if (menu.getScreen() == 3)
+    {
+        if (!wasCalendar) calendar.enter();
+        else if (calendar.tick(handPresent, handX, handY)) menu.close();
+    }
+    if (calendar.isVisible() && menu.getScreen() != 3)
+    {
+        calendar.setVisible(false);
+        invalidate();
+    }
     const bool openNow = (menu.getScreen() == SCREEN_SETTINGS);
     settings.tick(openNow, handPresent, handX, handY,
                   openNow && wasSettings && click);
@@ -493,6 +548,31 @@ void Screen1View::handleTickEvent()
     if (sound != MenuSound::None)
         presenter->playMenuSound(sound);
     applySettings();
+    updateRim();
+
+    const bool inCalendar = (menu.getScreen() == 3);
+    if (inCalendar != wasCalendar)
+    {
+        Drawable* home[] = { &hero, &icon0, &icon1, &icon2,
+            &icon3, &icon4, &selRing, &lblOption, &divLine, &divSpark, &msgState,
+            &sbReady, &sbWave };
+        // Keep the shared live status header visible while viewing the calendar.
+        for (Drawable* widget : home) widget->setVisible(!inCalendar);
+        board.setAlpha(inCalendar ? 102 : 255); // 40%, independent of backlight.
+        if (inCalendar) { hero.stopAnimation(); divSpark.stopAnimation(); }
+        else { hero.startAnimation(false, false, true); divSpark.startAnimation(false, false, true); }
+        invalidate();
+    }
+    if (inCalendar)
+    {
+        fieldLevel = 0.4f;
+        field.setMasterAlpha(102);
+        // Continue the existing particles along circuit routes behind the text.
+        field.tick(0.0f, -menu.getAngle() * 0.45f * 57.2958f);
+        presenter->setCarouselLED(menu.getAngle(), 0U);
+        lastScreen = 3;
+        return;
+    }
 
     /* a esfera acompanha o carrossel com fator MENOR. Girando junto, ela e
        os icones formariam um bloco rigido; a diferenca de velocidade e o
@@ -593,8 +673,8 @@ void Screen1View::handleTickEvent()
             lx = (int16_t)(LBL_MENU + (SL_TITLE_CX_FB - LBL_MENU)
                                       * settings.getHeaderProgress());
         }
-        lblOption.setXY((int16_t)(lx - LBL_W[sel] / 2),
-                        (int16_t)(LBL_CY - LBL_H[sel] / 2));
+        lblOption.setXY((int16_t)(lx - lblOption.getWidth() / 2),
+                        (int16_t)(LBL_CY - lblOption.getHeight() / 2));
         lblOption.setAlpha(a);
         lblOption.invalidate();
 
@@ -603,15 +683,15 @@ void Screen1View::handleTickEvent()
         if (m < 3)
         {
             msgState.setBitmap(Bitmap(MSG_ID[m]));
-            msgState.setXY((int16_t)(MSG_CX - 8),
-                           (int16_t)(LBL_CY - MSG_H[m] / 2));
+            msgState.setXY((int16_t)(MSG_CX - msgState.getWidth() / 2),
+                           (int16_t)(LBL_CY - msgState.getHeight() / 2));
             msgState.setAlpha((uint8_t)(170 * menu.getVisibility()));
         }
         else
         {
             msgState.setBitmap(Bitmap(BITMAP_MSG_BACK_ID));
-            msgState.setXY((int16_t)(MSG_CX - 8),
-                           (int16_t)(LBL_CY - MSG_BACK_H / 2));
+            msgState.setXY((int16_t)(MSG_CX - msgState.getWidth() / 2),
+                           (int16_t)(LBL_CY - msgState.getHeight() / 2));
             /* no Settings a dica de gesto (setHint) ocupa este lugar */
             msgState.setAlpha(inSettings ? 0 : 160);
         }
@@ -651,6 +731,11 @@ void Screen1View::handleTickEvent()
         }
     }
 
+    lastScreen = screen;
+}
+
+void Screen1View::updateRim()
+{
     /* --- borda: respira ao entrar ou sair de um menu --- */
     {
         int ev = menu.takeNavEvent();
@@ -676,7 +761,6 @@ void Screen1View::handleTickEvent()
         }
     }
 
-    lastScreen = screen;
 }
 
 void Screen1View::handleClickEvent(const touchgfx::ClickEvent& evt)

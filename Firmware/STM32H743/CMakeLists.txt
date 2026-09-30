@@ -46,6 +46,16 @@ add_subdirectory(cmake/touchgfx)
 target_include_directories(TouchGFX PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/App/Inc
     ${CMAKE_CURRENT_SOURCE_DIR}/BSP/Inc
+    ${CMAKE_CURRENT_SOURCE_DIR}/Components/Calendar
+    ${CMAKE_CURRENT_SOURCE_DIR}/aura_assets/compiled/typography
+    ${CMAKE_CURRENT_SOURCE_DIR}/aura_assets/compiled/startup
+    ${CMAKE_CURRENT_SOURCE_DIR}/aura_assets/compiled/calendar
+)
+target_sources(TouchGFX PRIVATE
+    TouchGFX/gui/src/common/CalendarWidget.cpp
+    aura_assets/compiled/typography/TypographyHints.cpp
+    aura_assets/compiled/startup/StartupAssets.cpp
+    aura_assets/compiled/calendar/CalendarAssets.cpp
 )
 
 # Link directories setup
@@ -91,6 +101,8 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     App/Src/app_ui_settings.c
     App/Src/app_logging.c
     App/Src/app_wifi.c
+    App/Src/app_calendar.c
+    Components/Calendar/calendar_data.c
     App/Src/app_provisioning.c
     App/Src/provision_protocol.c
 
@@ -142,6 +154,7 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
     Components/Audio
     Components/PDM
     Components/AudioDSP
+    Components/Calendar
 )
 
 # Produce independent programming images. Keeping QSPI out of the internal

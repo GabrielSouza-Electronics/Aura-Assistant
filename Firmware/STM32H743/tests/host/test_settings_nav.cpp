@@ -9,10 +9,10 @@
 // filtro do App ((anterior + bruto) / 2, inteiro -10..10, zona morta +-1),
 // valor mantido entre amostras.
 #include <gui/common/SettingsLogic.hpp>
-#include <cstdio>
-#include <cstdlib>
-#include <cmath>
-#include <functional>
+#include <stdio.h>
+#include <stdlib.h>
+#include <math.h>
+
 
 static int fails = 0;
 #define CHECK(c, ...) do { if (!(c)) { printf("  FAIL: " __VA_ARGS__); printf("\n"); fails++; } } while (0)
@@ -40,8 +40,8 @@ struct Result { int moves = 0, bumps = 0, enters = 0, leaves = 0, exits = 0, plu
 
 /* roda o Settings aberto; path(t) devolve a mao BRUTA. check(t, s) opcional. */
 static Result run(SettingsLogic& s, int ticks,
-                  std::function<void(int, bool&, float&, float&)> path,
-                  std::function<void(int, SettingsLogic&)> check = nullptr,
+                  void (*path)(int, bool&, float&, float&),
+                  void (*check)(int, SettingsLogic&) = nullptr,
                   unsigned seed = 1, float noise = 0.0f)
 {
     srand(seed);
@@ -72,6 +72,13 @@ static Result run(SettingsLogic& s, int ticks,
 static void openMenu(SettingsLogic& s)
 {
     run(s, 60, [](int, bool& p, float& x, float& y) { p = true; x = y = 0; });
+}
+
+static void focusBluetooth(SettingsLogic& s)
+{
+    while (s.getFocus() == 0) s.tick(true, true, 0, -1, false);
+    for (int i=0; i<90; ++i) s.tick(true, true, 0, 0, false);
+    s.takeFeedback();
 }
 
 int main()
@@ -111,14 +118,14 @@ int main()
 
     printf("5) segura a DIREITA 2 s -> entra UMA vez, nao muda valor\n");
     {
-        SettingsLogic s; openMenu(s);
+        SettingsLogic s; openMenu(s); focusBluetooth(s);
         Result r = run(s, 180, [](int t, bool& p, float& x, float& y) { p = true; y = 0; x = (t < 120) ? 0.8f : 0.0f; });
         CHECK(r.enters == 1 && s.isEditing() && r.plus + r.minus == 0, "enters %d edit %d", r.enters, s.isEditing());
     }
 
     printf("6) no ajuste: mao para CIMA ~1 s -> alguns +1; centro -> para\n");
     {
-        SettingsLogic s; openMenu(s);
+        SettingsLogic s; openMenu(s); focusBluetooth(s);
         run(s, 150, [](int t, bool& p, float& x, float& y) { p = true; y = 0; x = (t < 60) ? 0.8f : 0.0f; });
         Result r = run(s, 200, [](int t, bool& p, float& x, float& y) { p = true; x = 0; y = (t < 60) ? 0.8f : 0.0f; });
         printf("   +1 x%d, -1 x%d\n", r.plus, r.minus);
@@ -129,7 +136,7 @@ int main()
 
     printf("7) no ajuste: BAIXO da -1\n");
     {
-        SettingsLogic s; openMenu(s);
+        SettingsLogic s; openMenu(s); focusBluetooth(s);
         run(s, 150, [](int t, bool& p, float& x, float& y) { p = true; y = 0; x = (t < 60) ? 0.8f : 0.0f; });
         Result r = run(s, 200, [](int t, bool& p, float& x, float& y) { p = true; x = 0; y = (t < 60) ? -0.8f : 0.0f; });
         CHECK(r.minus >= 1 && r.plus == 0, "plus %d minus %d", r.plus, r.minus);
@@ -137,7 +144,7 @@ int main()
 
     printf("8) ESQUERDA segurada 2 s no ajuste -> sai so do ajuste (nao do menu)\n");
     {
-        SettingsLogic s; openMenu(s);
+        SettingsLogic s; openMenu(s); focusBluetooth(s);
         run(s, 150, [](int t, bool& p, float& x, float& y) { p = true; y = 0; x = (t < 60) ? 0.8f : 0.0f; });
         Result r = run(s, 200, [](int t, bool& p, float& x, float& y) { p = true; y = 0; x = (t < 120) ? -0.8f : 0.0f; });
         CHECK(r.leaves == 1 && r.exits == 0 && !s.isEditing(), "leaves %d exits %d", r.leaves, r.exits);
@@ -155,7 +162,7 @@ int main()
 
     printf("10) mao sai no meio do ajuste -> nada muda sozinho\n");
     {
-        SettingsLogic s; openMenu(s);
+        SettingsLogic s; openMenu(s); focusBluetooth(s);
         run(s, 150, [](int t, bool& p, float& x, float& y) { p = true; y = 0; x = (t < 60) ? 0.8f : 0.0f; });
         Result r = run(s, 300, [](int t, bool& p, float& x, float& y) { p = (t < 20) || (t > 200); x = 0; y = (t < 20) ? 0.3f : 0.0f; });
         CHECK(r.plus + r.minus == 0 && s.isEditing(), "plus %d minus %d edit %d", r.plus, r.minus, s.isEditing());
@@ -175,6 +182,26 @@ int main()
         printf("   foco %d  +%d  -%d  enters %d leaves %d exits %d\n", s.getFocus(), r.plus, r.minus, r.enters, r.leaves, r.exits);
         CHECK(s.getFocus() == SL_ROWS - 1 && r.enters == 1 && r.plus >= 1 && r.minus == 0 &&
               r.leaves == 1 && r.exits == 1, "fluxo incorreto");
+    }
+
+    {
+        SettingsLogic s; openMenu(s);
+        for (int i=0; i<60; ++i) s.tick(true, true, 1, 0, true);
+        int8_t item, delta;
+        CHECK(!s.isEditing() && !s.takeRequest(item, delta), "Wi-Fi must be read-only");
+    }
+    {
+        SettingsLogic s; openMenu(s); focusBluetooth(s);
+        for (int i=0; i<12; ++i) s.tick(true, true, 0.8f, 0, false);
+        CHECK(s.isEditing(), "entry");
+        // No sampled neutral frame; diagonal left and click at the same time.
+        for (int i=0; i<12; ++i) s.tick(true, true, -0.8f, -0.8f, true);
+        CHECK(!s.isEditing() && !s.takeExit(), "left must beat click and leave one level");
+        for (int i=0; i<120; ++i) s.tick(true, true, -0.8f, 0, true);
+        CHECK(!s.isEditing() && !s.takeExit(), "held left cannot exit twice");
+        s.tick(true, true, 0, 0, false);
+        for (int i=0; i<12; ++i) s.tick(true, true, -0.8f, 0, false);
+        CHECK(s.takeExit(), "rearmed left exits Settings");
     }
 
     printf(fails ? "\n%d FALHA(S)\n" : "\nOK - todos os cenarios passaram\n", fails);

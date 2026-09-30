@@ -32,9 +32,9 @@ static const int16_t SL_ROW_PITCH = 54;
    fica nesta coordenada y do framebuffer (inclui a margem da
    celula do glifo); o texto nao passa da largura logica maxima */
 static const int16_t SL_VALUE_END_FB_Y = 125;
-static const int16_t SL_VALUE_MAX_W[SL_ROWS] = { 166, 118, 112, 155 };
+static const int16_t SL_VALUE_MAX_W[SL_ROWS] = { 160, 103, 97, 144 };
 
-static const int16_t SL_SUB_W = 13, SL_SUB_H = 150;
+static const int16_t SL_SUB_W = 17, SL_SUB_H = 155;
 static const int16_t SL_TITLE_CX_FB = 88;   /* centro x (fb) do titulo */
 static const int16_t SL_SUB_CX_FB = 113;
 

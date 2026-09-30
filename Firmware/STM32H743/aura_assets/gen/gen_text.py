@@ -26,8 +26,8 @@ import os as _os
 _HERE = _os.path.dirname(_os.path.abspath(__file__))
 OUT = _os.path.join(_HERE, "text")
 
-SS = 4
-TRACK = 0.22            # fracao do corpo da fonte
+SS = 6
+TRACK = 0.02            # fracao do corpo da fonte
 
 def _font(name):
     # aura_assets/fonts/ primeiro (Windows); o caminho Linux original e o
@@ -50,7 +50,7 @@ MSGS = {
     "back": "PULL DOWN TO GO BACK",
 }
 
-C_LOW, C_MID, C_HIGH = (30, 96, 150), (150, 215, 245), (238, 252, 255)
+C_LOW, C_MID, C_HIGH = (30, 96, 150), (150, 215, 245), (235, 248, 255)
 
 
 def render_text(s, pt, font_path, pad=6):
@@ -70,54 +70,46 @@ def render_text(s, pt, font_path, pad=6):
 
 
 def finish(img):
-    """Reduz o texto supersampled e aplica o acabamento (unsharp + rampa).
-    Separado para o atlas de glifos do gen_settings.py usar o mesmo
-    tratamento."""
-    fw = img.width // SS
-    fh = img.height // SS
-    small = img.resize((fw, fh), Image.LANCZOS)
-    base = np.asarray(small, np.float32) / 255.0
-
-    # SEM blur. O glow que havia aqui borrava as hastes e o texto ficava
-    # esfumacado - em corpo 12-20 px isso destroi a legibilidade. Em vez de
-    # somar desfoque, aplico UNSHARP MASK: subtrai uma copia borrada de si
-    # mesma, o que reforca as bordas em vez de espalha-las.
-    b = np.asarray(
-        Image.fromarray((base * 255).astype(np.uint8), "L")
-        .filter(ImageFilter.GaussianBlur(0.9)), np.float32) / 255.0
-    t = np.clip(base + (base - b) * 0.75, 0, 1)
-
-    levels = 190
-    t = np.clip(np.round(t * (levels - 1)) / (levels - 1), 0, 1)
-    lo, mid, hi = map(np.array, (C_LOW, C_MID, C_HIGH))
-    a = np.clip(t / 0.50, 0, 1)[..., None]
-    b = np.clip((t - 0.50) / 0.50, 0, 1)[..., None]
-    rgb = lo * (1 - a) + mid * a
-    rgb = rgb * (1 - b) + hi * b
-    return Image.fromarray(
-        np.dstack([rgb, np.clip(t * 1.25, 0, 1) * 255]).astype(np.uint8), "RGBA")
+    """Calendar-style coverage: one downsample, constant color, clear edges."""
+    alpha = np.asarray(img.resize((img.width // SS, img.height // SS),
+                                  Image.Resampling.LANCZOS)).copy()
+    alpha[[0, -1], :] = 0
+    alpha[:, [0, -1]] = 0
+    rgba = np.zeros((*alpha.shape, 4), np.uint8)
+    rgba[:, :, :3] = C_HIGH
+    rgba[:, :, 3] = alpha
+    original = Image.fromarray(rgba)
+    quantized = np.asarray(original.quantize(colors=255,
+        method=Image.Quantize.FASTOCTREE, dither=Image.Dither.NONE)
+        .convert("RGBA")).copy()
+    quantized[alpha == 0] = 0
+    return Image.fromarray(quantized)
 
 
 def main():
     os.makedirs(OUT, exist_ok=True)
+    os.makedirs(_os.path.join(_HERE, "preview"), exist_ok=True)
     total = 0
     lines = []
 
     for s in LABELS:
-        im = render_text(s, 20, FONT_MED)
+        im = render_text(s, 24, FONT_MED)
         im.save(f"{OUT}/lbl_{s.lower()}.png")
         total += im.width * im.height + 1024
         lines.append(f"    {{ BITMAP_LBL_{s}_ID, {im.width}, {im.height} }},")
 
     for s in LABELS:
-        im = render_text(s, 9, FONT_REG)
+        im = render_text(s, 12, FONT_MED)
         im.save(f"{OUT}/ctx_{s.lower()}.png")
         total += im.width * im.height + 1024
 
     for key, s in MSGS.items():
-        im = render_text(s, 12, FONT_REG)
+        im = render_text(s, 14, FONT_MED)
         im.save(f"{OUT}/msg_{key}.png")
         total += im.width * im.height + 1024
+
+    render_text("READY", 30, FONT_MED).save(f"{OUT}/sb_ready.png")
+    render_text("WAVE TO BEGIN", 14, FONT_MED).save(f"{OUT}/sb_wave.png")
 
     print(f"  {len(LABELS)*2 + len(MSGS)} sprites de texto")
     print(f"  flash: {total/1024:.0f} KB em L8_ARGB8888")

@@ -40,6 +40,7 @@
 #include "app.h"
 #include "bsp_audio_out.h"
 #include "bsp_led.h"
+#include "bsp_lcd.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -240,7 +241,7 @@ void PeriphCommonClock_Config(void)
   PeriphClkInitStruct.AdcClockSelection = RCC_ADCCLKSOURCE_PLL2;
   if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInitStruct) != HAL_OK)
   {
-    Error_Handler();  
+    Error_Handler(); 
   }
 }
 
@@ -378,7 +379,10 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     HAL_IncTick();
   }
   /* USER CODE BEGIN Callback 1 */
-
+  if (htim->Instance == TIM6)
+  {
+    BSP_LCD_BacklightTick1ms();
+  }
   /* USER CODE END Callback 1 */
 }
 

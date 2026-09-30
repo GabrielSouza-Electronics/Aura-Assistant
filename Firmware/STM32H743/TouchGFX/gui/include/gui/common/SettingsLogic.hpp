@@ -20,7 +20,7 @@
  *   Ajuste:  mao para CIMA / BAIXO  -> +1 / -1 no valor, mesma velocidade
  *            mao na ESQUERDA        -> volta para a lista
  *   Direita/esquerda disparam apos ACT_HOLD ticks alem de ACT_THRESHOLD, e
- *   so rearmam depois de a mao voltar para perto do centro (CENTER_EXIT) -
+ *   rearmam no centro (CENTER_EXIT) ou ao inverter o sentido horizontal -
  *   segurar a esquerda nao sai de dois niveis de uma vez.
  *   Clique de aproximacao (ToF) = direita.
  *
