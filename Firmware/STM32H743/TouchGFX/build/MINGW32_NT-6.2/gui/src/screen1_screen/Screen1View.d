@@ -52,6 +52,8 @@ build/MINGW32_NT-6.2/gui/src/screen1_screen/Screen1View.o: \
  ../Middlewares/ST/touchgfx/framework/include/touchgfx/widgets/AnimatedImage.hpp \
  gui/include/gui/common/CircuitField.hpp \
  gui/include/gui/common/MenuLogic.hpp \
+ gui/include/gui/common/SettingsLogic.hpp \
+ gui/include/gui/common/SettingsLayout.hpp \
  generated/images/include/BitmapDatabase.hpp \
  generated/images/include/images/BitmapDatabase.hpp \
  ../Middlewares/ST/touchgfx/framework/include/touchgfx/Color.hpp
@@ -108,6 +110,8 @@ gui/include/gui/model/ModelListener.hpp:
 ../Middlewares/ST/touchgfx/framework/include/touchgfx/widgets/AnimatedImage.hpp:
 gui/include/gui/common/CircuitField.hpp:
 gui/include/gui/common/MenuLogic.hpp:
+gui/include/gui/common/SettingsLogic.hpp:
+gui/include/gui/common/SettingsLayout.hpp:
 generated/images/include/BitmapDatabase.hpp:
 generated/images/include/images/BitmapDatabase.hpp:
 ../Middlewares/ST/touchgfx/framework/include/touchgfx/Color.hpp:

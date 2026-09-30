@@ -88,6 +88,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     App/Src/app.c
     App/Src/app_hand_tracking.c
     App/Src/app_ui_audio.c
+    App/Src/app_ui_settings.c
     App/Src/app_logging.c
     App/Src/app_wifi.c
     App/Src/app_provisioning.c

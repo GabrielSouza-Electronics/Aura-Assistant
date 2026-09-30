@@ -208,3 +208,44 @@ REGERAR OS ASSETS
     python gen/instalar_circuito.py ../TouchGFX
 
 gen_rotate.py --check imprime a tabela de coordenadas transformadas.
+
+
+=========================================================================
+MENU SETTINGS
+=========================================================================
+    python gen/gen_settings.py            # gera sprites + preview
+    python gen/gen_settings.py --install  # copia para assets/images/aura/
+                                          # settings e reescreve
+                                          # gui/include/gui/common/SettingsLayout.hpp
+
+A fonte Poppins fica em aura_assets/fonts/ (OFL); o gen_text.py procura
+ali antes do caminho Linux antigo.
+
+As imagens de aura/settings (13) e aura/glyphs (54) sao geradas JA
+GIRADAS - nao passam pelo gen_rotate.py. No Designer, aba Images, ajuste
+como as demais: Layout Rotation 90, formato L8_ARGB8888, dither nenhum.
+Depois Generate Code.
+
+Os VALORES (Wi-Fi, Bluetooth, Brightness) sao texto livre, desenhados com
+o atlas aura/glyphs pelo widget GlyphText (TextArea nao gira). Para mudar
+em tempo de execucao, de qualquer task:
+    APP_UISettings_SetText(APP_UI_SETTING_WIFI, "HomeNet");
+A linha Sound mostra o volume do BSP (0..10) como "N/10".
+Texto sai em maiusculas; caractere fora do atlas vira '?'; texto longo
+demais para a linha e cortado com "..".
+
+Os widgets (caixas, valores, halo, subtitulo) sao criados em codigo no
+Screen1View; a animacao e o foco estao em SettingsLogic.
+
+NAVEGACAO (SettingsLogic) - mesmas regras e constantes do carrossel
+(TouchGFX/gui/include/gui/common/HandInput.hpp). A posicao da mao em
+relacao ao centro do sensor e um joystick:
+    Lista:   mao para cima/baixo -> a lista anda para cima/baixo, com
+             velocidade proporcional; mao no centro para e alinha
+             mao na direita      -> entra na linha (ajuste)
+             mao na esquerda     -> volta ao carrossel
+    Ajuste:  mao para cima/baixo -> +1 / -1 (Wi-Fi/Bluetooth: liga/desliga)
+             mao na esquerda     -> volta para a lista
+Direita/esquerda disparam como o "voltar" do carrossel (alem de 0.55 por
+200 ms) e so rearmam com a mao de volta perto do centro.
+Teste de host: Tests/host/test_settings_nav.cpp.

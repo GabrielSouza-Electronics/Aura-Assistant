@@ -234,6 +234,12 @@
     <ClCompile Include="..\..\gui\src\common\MenuLogic.cpp">
       <Filter>Source Files\gui\common</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\gui\src\common\SettingsLogic.cpp">
+      <Filter>Source Files\gui\common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\gui\src\common\GlyphText.cpp">
+      <Filter>Source Files\gui\common</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="$(ApplicationRoot)\assets\texts\texts.xml">
@@ -692,6 +698,21 @@
       <Filter>Header Files\gui\common</Filter>
     </ClInclude>
     <ClInclude Include="..\..\gui\include\gui\common\MenuSound.hpp">
+      <Filter>Header Files\gui\common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\gui\include\gui\common\SettingsLayout.hpp">
+      <Filter>Header Files\gui\common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\gui\include\gui\common\SettingsLogic.hpp">
+      <Filter>Header Files\gui\common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\gui\include\gui\common\GlyphText.hpp">
+      <Filter>Header Files\gui\common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\gui\include\gui\common\SettingsGlyphs.hpp">
+      <Filter>Header Files\gui\common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\gui\include\gui\common\HandInput.hpp">
       <Filter>Header Files\gui\common</Filter>
     </ClInclude>
   </ItemGroup>

@@ -6,6 +6,9 @@
 
 #include <gui/common/CircuitField.hpp>
 #include <gui/common/MenuLogic.hpp>
+#include <gui/common/SettingsLogic.hpp>
+#include <gui/common/GlyphText.hpp>
+#include <touchgfx/widgets/Image.hpp>
 #include <touchgfx/events/ClickEvent.hpp>
 #include <touchgfx/events/DragEvent.hpp>
 
@@ -34,10 +37,27 @@ public:
     void requestHandClick() { handClickPending = true; }
     void setBatteryLevel(int pct);
     void setChargerStatus(bool chg);
+    /* Settings: textos livres (0 Wi-Fi, 1 Bluetooth, 2 Brightness) e
+       volume 0..10 exibido como "N/10" na linha Sound.                 */
+    void setSettingText(uint8_t item, const char* text);
+    void setVolume(uint8_t volume);
 
 protected:
     CircuitField field;
     MenuLogic    menu;
+
+    /* Menu Settings: widgets criados em codigo, como o field. Ficam sobre
+       as particulas e sob o titulo; as caixas sao translucidas.         */
+    SettingsLogic   settings;
+    touchgfx::Image setGlow;
+    touchgfx::Image setRow[SL_ROWS];
+    GlyphText       setVal[SL_ROWS];
+    GlyphText       setHint;        /* dica de gesto, no lugar do msgState */
+    const char*     hintText = nullptr;
+    touchgfx::Image setSub;
+    uint16_t lastRowId[SL_ROWS];
+    bool     settingsShown = false;
+    float    fieldLevel = 1.0f;     /* brilho das particulas, 0.5 em submenu */
 
     bool  handPresent;
     bool  handClickPending = false;
@@ -50,6 +70,9 @@ protected:
     uint16_t lastIconId[5];      /* evita setBitmap redundante             */
 
     void applyStatus();
+    void setupSettings();
+    void applySettings();
+    void handleSettingsEvents();
     enum class StartupStage { Rise, Wait, Dock, Done };
     StartupStage startupStage = StartupStage::Rise;
     uint16_t startupTicks = 0;

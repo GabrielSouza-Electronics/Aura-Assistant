@@ -51,7 +51,9 @@ build/MINGW32_NT-6.2/gui/src/screen1_screen/Screen1Presenter.o: \
  ../Middlewares/ST/touchgfx/framework/include/touchgfx/widgets/Image.hpp \
  ../Middlewares/ST/touchgfx/framework/include/touchgfx/widgets/AnimatedImage.hpp \
  gui/include/gui/common/CircuitField.hpp \
- gui/include/gui/common/MenuLogic.hpp
+ gui/include/gui/common/MenuLogic.hpp \
+ gui/include/gui/common/SettingsLogic.hpp \
+ gui/include/gui/common/SettingsLayout.hpp
 gui/include/gui/screen1_screen/Screen1View.hpp:
 generated/gui_generated/include/gui_generated/screen1_screen/Screen1ViewBase.hpp:
 gui/include/gui/common/FrontendApplication.hpp:
@@ -105,3 +107,5 @@ gui/include/gui/model/ModelListener.hpp:
 ../Middlewares/ST/touchgfx/framework/include/touchgfx/widgets/AnimatedImage.hpp:
 gui/include/gui/common/CircuitField.hpp:
 gui/include/gui/common/MenuLogic.hpp:
+gui/include/gui/common/SettingsLogic.hpp:
+gui/include/gui/common/SettingsLayout.hpp:

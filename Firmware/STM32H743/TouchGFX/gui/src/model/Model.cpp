@@ -8,6 +8,7 @@ extern "C"
 }
 #include "app_hand_tracking.h"
 #include "app_ui_audio.h"
+#include "app_ui_settings.h"
 #elif defined(_WIN32)
 #define NOMINMAX
 #include <windows.h>
@@ -16,9 +17,9 @@ extern "C"
 #include <cstring>
 #endif
 
-Model::Model() : modelListener(0), lastWifiLevel(0xFFU)
+Model::Model() : modelListener(0), lastWifiLevel(0xFFU), lastVolume(0xFFU)
 {
-
+    for (uint32_t& v : settingVersion) v = 0U;
 }
 
 void Model::tick()
@@ -39,6 +40,25 @@ void Model::tick()
         {
             lastWifiLevel = wifiLevel;
             modelListener->wifiLevelUpdated(wifiLevel);
+        }
+
+        /* Settings values: the simulator keeps the View's demo texts. */
+        static_assert(sizeof(settingVersion) / sizeof(settingVersion[0])
+                      == APP_UI_SETTING_TEXT_COUNT, "Settings item count");
+        char text[APP_UI_SETTING_TEXT_SIZE];
+        for (uint8_t i = 0; i < APP_UI_SETTING_TEXT_COUNT; i++)
+        {
+            if (APP_UISettings_ReadText((APP_UISetting_t)i, &settingVersion[i],
+                                        text, sizeof(text)))
+            {
+                modelListener->settingTextUpdated(i, text);
+            }
+        }
+        const uint8_t volume = APP_UISettings_GetVolume();
+        if (volume != lastVolume)
+        {
+            lastVolume = volume;
+            modelListener->volumeUpdated(volume);
         }
     }
 #endif
@@ -86,6 +106,51 @@ void Model::completeStartup()
 {
 #if defined(STM32H743xx)
     APP_DisplayStartupComplete();
+#endif
+}
+
+void Model::requestSetting(uint8_t item, int8_t delta)
+{
+#if defined(STM32H743xx)
+    /* Sound e aplicado pelo App; os demais vao para o hook do dono. O
+       texto novo volta pelo caminho normal (settingTextUpdated). */
+    APP_UISettings_Request((APP_UISetting_t)item, delta);
+#else
+    if (!modelListener) return;
+    switch (item)
+    {
+    case 0:
+        simWifi = (delta > 0);
+        modelListener->settingTextUpdated(0, simWifi ? "HomeNet" : "Off");
+        break;
+    case 1:
+        simBluetooth = (delta > 0);
+        modelListener->settingTextUpdated(1, simBluetooth ? "On" : "Off");
+        break;
+    case 2:
+    {
+        int b = simBrightness + delta * 10;
+        simBrightness = (uint8_t)(b < 10 ? 10 : (b > 100 ? 100 : b));
+        char text[5];
+        int n = 0;
+        if (simBrightness >= 100) text[n++] = '1';
+        if (simBrightness >= 10) text[n++] = (char)('0' + (simBrightness / 10) % 10);
+        text[n++] = (char)('0' + simBrightness % 10);
+        text[n++] = '%';
+        text[n] = '\0';
+        modelListener->settingTextUpdated(2, text);
+        break;
+    }
+    case 3:
+    {
+        int v = simVolume + delta;
+        simVolume = (uint8_t)(v < 0 ? 0 : (v > 10 ? 10 : v));
+        modelListener->volumeUpdated(simVolume);
+        break;
+    }
+    default:
+        break;
+    }
 #endif
 }
 

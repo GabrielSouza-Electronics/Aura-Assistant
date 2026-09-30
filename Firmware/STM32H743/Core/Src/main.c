@@ -240,7 +240,7 @@ void PeriphCommonClock_Config(void)
   PeriphClkInitStruct.AdcClockSelection = RCC_ADCCLKSOURCE_PLL2;
   if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInitStruct) != HAL_OK)
   {
-    Error_Handler(); 
+    Error_Handler();  
   }
 }
 

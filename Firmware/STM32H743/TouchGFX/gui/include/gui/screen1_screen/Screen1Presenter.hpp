@@ -27,7 +27,10 @@ public:
     virtual void handUpdated(bool present, float x, float y);
     virtual void handClicked() override;
     virtual void wifiLevelUpdated(uint8_t level) override;
+    virtual void settingTextUpdated(uint8_t item, const char* text) override;
+    virtual void volumeUpdated(uint8_t volume) override;
     void playMenuSound(MenuSound sound);
+    void requestSetting(uint8_t item, int8_t delta);
     void setHeroBreath(uint8_t level);
     void setCarouselLED(float angle, uint8_t visibility);
     void pulseMenuEnterLED();

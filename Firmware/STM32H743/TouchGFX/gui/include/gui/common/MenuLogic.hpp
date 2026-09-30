@@ -55,6 +55,12 @@ public:
     /* Qual mensagem de estado mostrar: 0 hold, 1 cancelled, 2 move */
     int getStateMsg() const;
 
+    /* Menus com navegacao propria (Settings) usam o eixo vertical para
+       mover o foco; desligam o "puxar para baixo = voltar" e fecham por
+       close().                                                          */
+    void setVerticalBack(bool enabled) { verticalBack = enabled; }
+    void close() { if (screen >= 0) back(); }
+
 private:
     float angle;
     int   sel;
@@ -69,6 +75,8 @@ private:
     float tilt;
     float vis;
     float grow[ML_COUNT];
+    bool  verticalBack;
+    bool  spinLock;     /* apos voltar, carrossel parado ate a mao centrar */
 
     void open(int idx);
     void back();

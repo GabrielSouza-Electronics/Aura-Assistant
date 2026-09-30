@@ -42,6 +42,7 @@ GROUPS = [
     ("status",         "aura/status"),
     ("divider",        "aura/divider"),
     ("rim",            "aura/rim"),
+    ("settings",       "aura/settings"),   # gerado ja girado: gen_settings.py
 ]
 
 

@@ -27,6 +27,8 @@
     <ClCompile Include="..\..\gui\src\common\CircuitField.cpp"/>
     <ClCompile Include="..\..\gui\src\common\CircuitRoutes.cpp"/>
     <ClCompile Include="..\..\gui\src\common\MenuLogic.cpp"/>
+    <ClCompile Include="..\..\gui\src\common\SettingsLogic.cpp"/>
+    <ClCompile Include="..\..\gui\src\common\GlyphText.cpp"/>
   </ItemGroup>
   <ItemGroup>
     <None Include="$(ApplicationRoot)\assets\texts\texts.xml"/>
@@ -183,6 +185,11 @@
     <ClInclude Include="..\..\gui\include\gui\common\CircuitField.hpp"/>
     <ClInclude Include="..\..\gui\include\gui\common\MenuLogic.hpp"/>
     <ClInclude Include="..\..\gui\include\gui\common\MenuSound.hpp"/>
+    <ClInclude Include="..\..\gui\include\gui\common\SettingsLayout.hpp"/>
+    <ClInclude Include="..\..\gui\include\gui\common\SettingsLogic.hpp"/>
+    <ClInclude Include="..\..\gui\include\gui\common\GlyphText.hpp"/>
+    <ClInclude Include="..\..\gui\include\gui\common\SettingsGlyphs.hpp"/>
+    <ClInclude Include="..\..\gui\include\gui\common\HandInput.hpp"/>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="$(ApplicationRoot)\generated\simulator\touchgfx.rc"/>

@@ -57,6 +57,8 @@ build/MINGW32_NT-6.2/generated/gui_generated/src/common/FrontendApplicationBase.
  ../Middlewares/ST/touchgfx/framework/include/touchgfx/widgets/AnimatedImage.hpp \
  gui/include/gui/common/CircuitField.hpp \
  gui/include/gui/common/MenuLogic.hpp \
+ gui/include/gui/common/SettingsLogic.hpp \
+ gui/include/gui/common/SettingsLayout.hpp \
  generated/texts/include/texts/TextKeysAndLanguages.hpp \
  ../Middlewares/ST/touchgfx/framework/include/touchgfx/Texts.hpp
 generated/gui_generated/include/gui_generated/common/FrontendApplicationBase.hpp:
@@ -117,5 +119,7 @@ gui/include/gui/model/ModelListener.hpp:
 ../Middlewares/ST/touchgfx/framework/include/touchgfx/widgets/AnimatedImage.hpp:
 gui/include/gui/common/CircuitField.hpp:
 gui/include/gui/common/MenuLogic.hpp:
+gui/include/gui/common/SettingsLogic.hpp:
+gui/include/gui/common/SettingsLayout.hpp:
 generated/texts/include/texts/TextKeysAndLanguages.hpp:
 ../Middlewares/ST/touchgfx/framework/include/touchgfx/Texts.hpp:

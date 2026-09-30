@@ -27,6 +27,11 @@ void Screen1Presenter::playMenuSound(MenuSound sound)
     model->playMenuSound(sound);
 }
 
+void Screen1Presenter::requestSetting(uint8_t item, int8_t delta)
+{
+    model->requestSetting(item, delta);
+}
+
 void Screen1Presenter::handClicked()
 {
     view.requestHandClick();
@@ -35,6 +40,16 @@ void Screen1Presenter::handClicked()
 void Screen1Presenter::wifiLevelUpdated(uint8_t level)
 {
     view.setWifiLevel(level);
+}
+
+void Screen1Presenter::settingTextUpdated(uint8_t item, const char* text)
+{
+    view.setSettingText(item, text);
+}
+
+void Screen1Presenter::volumeUpdated(uint8_t volume)
+{
+    view.setVolume(volume);
 }
 
 void Screen1Presenter::setHeroBreath(uint8_t level)

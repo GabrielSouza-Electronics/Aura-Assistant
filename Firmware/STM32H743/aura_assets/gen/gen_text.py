@@ -29,8 +29,17 @@ OUT = _os.path.join(_HERE, "text")
 SS = 4
 TRACK = 0.22            # fracao do corpo da fonte
 
-FONT_MED = "/usr/share/fonts/truetype/google-fonts/Poppins-Medium.ttf"
-FONT_REG = "/usr/share/fonts/truetype/google-fonts/Poppins-Regular.ttf"
+def _font(name):
+    # aura_assets/fonts/ primeiro (Windows); o caminho Linux original e o
+    # fallback de quem gerou os assets anteriores.
+    local = _os.path.join(_os.path.dirname(_HERE), "fonts", name)
+    if _os.path.isfile(local):
+        return local
+    return "/usr/share/fonts/truetype/google-fonts/" + name
+
+
+FONT_MED = _font("Poppins-Medium.ttf")
+FONT_REG = _font("Poppins-Regular.ttf")
 
 LABELS = ["SETTINGS", "TASKS", "REMINDERS", "CALENDAR", "CHAT"]
 MSGS = {
@@ -57,6 +66,13 @@ def render_text(s, pt, font_path, pad=6):
         dr.text((x, h / 2), c, font=f, fill=255, anchor="lm")
         x += probe.textlength(c, font=f) + track
 
+    return finish(img)
+
+
+def finish(img):
+    """Reduz o texto supersampled e aplica o acabamento (unsharp + rampa).
+    Separado para o atlas de glifos do gen_settings.py usar o mesmo
+    tratamento."""
     fw = img.width // SS
     fh = img.height // SS
     small = img.resize((fw, fh), Image.LANCZOS)

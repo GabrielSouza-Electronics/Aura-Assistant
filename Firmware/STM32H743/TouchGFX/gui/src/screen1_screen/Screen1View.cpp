@@ -55,6 +55,46 @@ static const uint16_t ICON_ID[5][3] = {
     { BITMAP_CHAT_36_ID,      BITMAP_CHAT_48_ID,      BITMAP_CHAT_64_ID      }
 };
 
+/* --- menu Settings ------------------------------------------------------
+   Retangulos e colunas vem de SettingsLayout.hpp (gerado pelo
+   gen_settings.py). IDs em tabela explicita, sem aritmetica: a pasta
+   settings/ mistura sequencias (glow, row, rowf, val).                  */
+static const int SCREEN_SETTINGS = 0;     /* indice do item no carrossel  */
+
+static const uint16_t SET_ROW_ID[SL_ROWS] = {
+    BITMAP_ROW_0_ID, BITMAP_ROW_1_ID, BITMAP_ROW_2_ID, BITMAP_ROW_3_ID
+};
+static const uint16_t SET_ROWF_ID[SL_ROWS] = {
+    BITMAP_ROWF_0_ID, BITMAP_ROWF_1_ID, BITMAP_ROWF_2_ID, BITMAP_ROWF_3_ID
+};
+static const uint16_t SET_GLOW_ID[SL_ROWS] = {
+    BITMAP_GLOW_0_ID, BITMAP_GLOW_1_ID, BITMAP_GLOW_2_ID, BITMAP_GLOW_3_ID
+};
+
+static const int SET_ROW_SOUND = 3;       /* linha que mostra o volume    */
+static const uint8_t VOLUME_MAX = 10;
+
+/* Textos de demonstracao do simulador. No alvo o Model substitui pelos
+   valores do App (APP_UISettings_SetText) no primeiro tick.          */
+static const char* const SET_DEMO_TEXT[SET_ROW_SOUND] = {
+    "HomeNet", "On", "70%"
+};
+
+/* Dicas de gesto do Settings (GlyphText: texto livre, sem asset novo). */
+static const char* const HINT_LIST = "RIGHT SELECT  LEFT BACK";
+static const char* const HINT_EDIT = "UP/DOWN CHANGE  LEFT DONE";
+static const int16_t HINT_X     = 409;     /* mesmo lugar do msgState      */
+static const int16_t HINT_MAX_W = 300;
+
+static int16_t roundi(float v)
+{
+    return (int16_t)((v >= 0.0f) ? (v + 0.5f) : (v - 0.5f));
+}
+
+/* Parametros das particulas: brilho reduzido em qualquer submenu. */
+static const float FIELD_LEVEL_MENU = 0.5f;
+static const float FIELD_LEVEL_K    = 0.12f;
+
 static int16_t iconSlot(int16_t sz)
 {
     return (sz <= 40) ? 0 : ((sz <= 56) ? 1 : 2);
@@ -73,6 +113,10 @@ Screen1View::Screen1View()
     for (int i = 0; i < 5; i++)
     {
         lastIconId[i] = 0;
+    }
+    for (int i = 0; i < SL_ROWS; i++)
+    {
+        lastRowId[i] = 0;
     }
 }
 
@@ -115,6 +159,8 @@ void Screen1View::setupScreen()
     sbWave.setXY((int16_t)(348 - SB_WAVE_W / 2),
                  (int16_t)(239 - SB_WAVE_H / 2));
 
+    setupSettings();
+
     applyStatus();
     heroHomeX = hero.getX();
     heroHomeY = hero.getY();
@@ -124,6 +170,180 @@ void Screen1View::setupScreen()
     // Assets are rotated: physical bottom is framebuffer +X.
     hero.setXY(480, (480 - hero.getHeight()) / 2);
     hero.setAlpha(255);
+}
+
+void Screen1View::setupSettings()
+{
+    /* Pilha: field (particulas) < hero < halo < caixas < valores <
+       subtitulo < icones/titulo. insert() encadeado mantem essa ordem
+       sem mexer no Designer.                                          */
+    Drawable* prev = &hero;
+    setGlow.setBitmap(Bitmap(SET_GLOW_ID[0]));
+    insert(prev, setGlow);
+    prev = &setGlow;
+    for (int i = 0; i < SL_ROWS; i++)
+    {
+        setRow[i].setBitmap(Bitmap(SET_ROW_ID[i]));
+        lastRowId[i] = SET_ROW_ID[i];
+        insert(prev, setRow[i]);
+        prev = &setRow[i];
+    }
+    for (int i = 0; i < SL_ROWS; i++)
+    {
+        insert(prev, setVal[i]);
+        prev = &setVal[i];
+    }
+    for (int i = 0; i < SET_ROW_SOUND; i++)
+    {
+        setSettingText((uint8_t)i, SET_DEMO_TEXT[i]);
+    }
+    setVolume(5);
+    setSub.setBitmap(Bitmap(BITMAP_SUB_TITLE_ID));
+    setSub.setXY((int16_t)(SL_SUB_CX_FB - SL_SUB_W / 2),
+                 (int16_t)(239 - SL_SUB_H / 2));
+    insert(prev, setSub);
+    /* a dica fica no fim da pilha, junto do msgState que ela substitui */
+    add(setHint);
+
+    Drawable* all[] = { &setGlow, &setSub, &setHint };
+    for (Drawable* d : all) d->setVisible(false);
+    for (int i = 0; i < SL_ROWS; i++)
+    {
+        setRow[i].setVisible(false);
+        setVal[i].setVisible(false);
+    }
+    settingsShown = false;
+}
+
+void Screen1View::applySettings()
+{
+    if (!settings.isVisible() && !settingsShown) return;
+    settingsShown = settings.isVisible();
+
+    const int focus = settings.getFocus();
+    /* Offsets LOGICOS da linha em foco (inclinacao, batida, ajuste).
+       Girado: x logico -> -y do framebuffer, y logico -> +x.          */
+    const int16_t fdx = roundi(settings.getFocusOffsetY());
+    const int16_t fdy = roundi(-settings.getFocusOffsetX());
+    for (int i = 0; i < SL_ROWS; i++)
+    {
+        const uint8_t a = settings.getRowAlpha(i);
+        const int16_t dx = (i == focus) ? fdx : 0;
+        const int16_t dy = (int16_t)(-settings.getRowSlide(i)
+                                     + ((i == focus) ? fdy : 0));
+        const SettingsRect& r = SL_ROW[i];
+
+        setRow[i].invalidate();
+        const uint16_t id = (i == focus) ? SET_ROWF_ID[i] : SET_ROW_ID[i];
+        if (id != lastRowId[i])
+        {
+            lastRowId[i] = id;
+            setRow[i].setBitmap(Bitmap(id));
+        }
+        setRow[i].setXY((int16_t)(r.x + dx), (int16_t)(r.y + dy));
+        setRow[i].setAlpha(a);
+        setRow[i].setVisible(a > 0);
+        setRow[i].invalidate();
+
+        /* valor alinhado a direita no logico = topo fixo no fb */
+        setVal[i].invalidate();
+        setVal[i].setXY((int16_t)(r.x + dx + r.w / 2 - setVal[i].getWidth() / 2),
+                        (int16_t)(SL_VALUE_END_FB_Y + dy));
+        setVal[i].setAlpha(settings.getValueAlpha(i));
+        setVal[i].setVisible(a > 0);
+        setVal[i].invalidate();
+    }
+
+    setGlow.invalidate();
+    if (focus >= 0)
+    {
+        /* o halo acompanha a posicao continua da lista (como o angulo
+           do carrossel); as linhas tem o mesmo passo, posicao linear  */
+        const SettingsRect& g = SL_GLOW[focus];
+        const float row = settings.getGlowRow();
+        setGlow.setBitmap(Bitmap(SET_GLOW_ID[focus]));
+        setGlow.setXY((int16_t)(SL_GLOW[0].x + roundi(row * SL_ROW_PITCH) + fdx),
+                      (int16_t)(g.y - settings.getRowSlide(focus) + fdy));
+        const uint8_t a = (uint8_t)((settings.getGlowAlpha()
+                                     * settings.getRowAlpha(focus)) / 255);
+        setGlow.setAlpha(a);
+        setGlow.setVisible(a > 0);
+    }
+    else
+    {
+        setGlow.setVisible(false);
+    }
+    setGlow.invalidate();
+
+    setSub.invalidate();
+    const uint8_t sa = (uint8_t)((settings.getRowAlpha(0) * 200) / 255);
+    setSub.setAlpha(sa);
+    setSub.setVisible(sa > 0);
+    setSub.invalidate();
+
+    /* dica de gesto conforme o estado; so reescreve quando muda */
+    const char* hint = settings.isEditing() ? HINT_EDIT : HINT_LIST;
+    setHint.invalidate();
+    if (hint != hintText)
+    {
+        hintText = hint;
+        setHint.setText(hint, HINT_MAX_W);
+    }
+    setHint.setXY(HINT_X, (int16_t)((480 - setHint.getHeight()) / 2));
+    const uint8_t ha = (uint8_t)((settings.getRowAlpha(SL_ROWS - 1) * 170) / 255);
+    setHint.setAlpha(ha);
+    setHint.setVisible(ha > 0);
+    setHint.invalidate();
+}
+
+void Screen1View::handleSettingsEvents()
+{
+    int8_t item = 0;
+    int8_t delta = 0;
+    if (settings.takeRequest(item, delta))
+    {
+        presenter->requestSetting((uint8_t)item, delta);
+    }
+    switch (settings.takeFeedback())
+    {
+    case SettingsLogic::Feedback::Move:
+    case SettingsLogic::Feedback::Change:
+        presenter->playMenuSound(MenuSound::Tick);
+        break;
+    case SettingsLogic::Feedback::Enter:
+        presenter->playMenuSound(MenuSound::Enter);
+        presenter->pulseMenuEnterLED();
+        break;
+    case SettingsLogic::Feedback::Leave:
+        presenter->playMenuSound(MenuSound::Exit);
+        break;
+    default:
+        break;      /* Bump: so visual */
+    }
+}
+
+void Screen1View::setSettingText(uint8_t item, const char* text)
+{
+    if (item >= SET_ROW_SOUND) return;
+    setVal[item].invalidate();
+    setVal[item].setText(text, SL_VALUE_MAX_W[item]);
+    setVal[item].invalidate();
+}
+
+void Screen1View::setVolume(uint8_t volume)
+{
+    if (volume > VOLUME_MAX) volume = VOLUME_MAX;
+    char text[6];
+    int n = 0;
+    if (volume >= 10) text[n++] = (char)('0' + volume / 10);
+    text[n++] = (char)('0' + volume % 10);
+    text[n++] = '/';
+    text[n++] = '1';
+    text[n++] = '0';
+    text[n] = '\0';
+    setVal[SET_ROW_SOUND].invalidate();
+    setVal[SET_ROW_SOUND].setText(text, SL_VALUE_MAX_W[SET_ROW_SOUND]);
+    setVal[SET_ROW_SOUND].invalidate();
 }
 
 void Screen1View::setHomeVisible(bool visible)
@@ -249,13 +469,30 @@ void Screen1View::handleTickEvent()
 
     const int previousScreen = menu.getScreen();
     const int previousItem = menu.getSelected();
-    menu.tick(handPresent, handX, handY, handClickPending);
+    const bool wasSettings = (previousScreen == SCREEN_SETTINGS);
+    const bool click = handClickPending;
     handClickPending = false;
+
+    /* Dentro do Settings os gestos sao dele: o eixo vertical move o foco
+       (sem "puxar para baixo = voltar") e o clique confirma a linha.  */
+    menu.setVerticalBack(!wasSettings);
+    menu.tick(handPresent, handX, handY, wasSettings ? false : click);
+    const bool openNow = (menu.getScreen() == SCREEN_SETTINGS);
+    settings.tick(openNow, handPresent, handX, handY,
+                  openNow && wasSettings && click);
+    if (settings.takeExit())
+    {
+        menu.close();
+    }
+    handleSettingsEvents();
+    const bool inSettings = (menu.getScreen() == SCREEN_SETTINGS);
+
     const MenuSound sound = menuSoundForTransition(previousScreen, previousItem,
         menu.getScreen(), menu.getSelected(), previousHandPresent, handPresent);
     previousHandPresent = handPresent;
     if (sound != MenuSound::None)
         presenter->playMenuSound(sound);
+    applySettings();
 
     /* a esfera acompanha o carrossel com fator MENOR. Girando junto, ela e
        os icones formariam um bloco rigido; a diferenca de velocidade e o
@@ -264,6 +501,14 @@ void Screen1View::handleTickEvent()
 
     const int screen = menu.getScreen();
     const bool inMenu = (screen >= 0);
+
+    /* particulas a meio brilho dentro de qualquer submenu, brilho cheio
+       no carrossel e na tela inicial; transicao suave nos dois sentidos */
+    {
+        const float target = inMenu ? FIELD_LEVEL_MENU : 1.0f;
+        fieldLevel += (target - fieldLevel) * FIELD_LEVEL_K;
+        field.setMasterAlpha((uint8_t)(255.0f * fieldLevel + 0.5f));
+    }
     presenter->setCarouselLED(menu.getAngle(),
         inMenu ? 0U : (uint8_t)(255.0f * menu.getVisibility()));
 
@@ -343,6 +588,11 @@ void Screen1View::handleTickEvent()
         lblOption.invalidate();
         lblOption.setBitmap(Bitmap(LBL_ID[sel]));
         int16_t lx = inMenu ? LBL_MENU : LBL_CX;
+        if (inSettings)
+        {
+            lx = (int16_t)(LBL_MENU + (SL_TITLE_CX_FB - LBL_MENU)
+                                      * settings.getHeaderProgress());
+        }
         lblOption.setXY((int16_t)(lx - LBL_W[sel] / 2),
                         (int16_t)(LBL_CY - LBL_H[sel] / 2));
         lblOption.setAlpha(a);
@@ -362,7 +612,8 @@ void Screen1View::handleTickEvent()
             msgState.setBitmap(Bitmap(BITMAP_MSG_BACK_ID));
             msgState.setXY((int16_t)(MSG_CX - 8),
                            (int16_t)(LBL_CY - MSG_BACK_H / 2));
-            msgState.setAlpha(160);
+            /* no Settings a dica de gesto (setHint) ocupa este lugar */
+            msgState.setAlpha(inSettings ? 0 : 160);
         }
         msgState.invalidate();
     }
@@ -431,15 +682,18 @@ void Screen1View::handleTickEvent()
 void Screen1View::handleClickEvent(const touchgfx::ClickEvent& evt)
 {
     bool down = (evt.getType() == touchgfx::ClickEvent::PRESSED);
-    /* o display esta girado: o X da tela corresponde ao Y da cena */
+    /* o display esta girado: o X da tela corresponde ao Y da cena.
+       Mesma convencao do ToF (APP_HandTracking_ReadPointer): positivo =
+       direita / CIMA. X do framebuffer cresce para BAIXO fisico, dai o
+       sinal invertido no segundo eixo.                                 */
     setHand(down,
             (240 - evt.getY()) / 240.0f,
-            (evt.getX() - 240) / 240.0f);
+            (240 - evt.getX()) / 240.0f);
 }
 
 void Screen1View::handleDragEvent(const touchgfx::DragEvent& evt)
 {
     setHand(true,
             (240 - evt.getNewY()) / 240.0f,
-            (evt.getNewX() - 240) / 240.0f);
+            (240 - evt.getNewX()) / 240.0f);
 }

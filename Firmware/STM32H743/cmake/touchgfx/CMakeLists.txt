@@ -22,7 +22,9 @@ set(TouchGFX_Src
     ${CMAKE_SOURCE_DIR}/TouchGFX/gui/src/common/CircuitField.cpp
     ${CMAKE_SOURCE_DIR}/TouchGFX/gui/src/common/CircuitRoutes.cpp
     ${CMAKE_SOURCE_DIR}/TouchGFX/gui/src/common/FrontendApplication.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/gui/src/common/GlyphText.cpp
     ${CMAKE_SOURCE_DIR}/TouchGFX/gui/src/common/MenuLogic.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/gui/src/common/SettingsLogic.cpp
     ${CMAKE_SOURCE_DIR}/TouchGFX/gui/src/model/Model.cpp
     ${CMAKE_SOURCE_DIR}/TouchGFX/gui/src/screen1_screen/Screen1Presenter.cpp
     ${CMAKE_SOURCE_DIR}/TouchGFX/gui/src/screen1_screen/Screen1View.cpp
@@ -119,6 +121,60 @@ set(TouchGFX_Src
     ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/divider/image_spark_11.cpp
     ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/divider/image_spark_12.cpp
     ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/divider/image_spark_13.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/glyphs/image_g_21.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/glyphs/image_g_23.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/glyphs/image_g_25.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/glyphs/image_g_26.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/glyphs/image_g_27.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/glyphs/image_g_28.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/glyphs/image_g_29.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/glyphs/image_g_2A.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/glyphs/image_g_2B.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/glyphs/image_g_2C.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/glyphs/image_g_2D.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/glyphs/image_g_2E.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/glyphs/image_g_2F.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/glyphs/image_g_30.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/glyphs/image_g_31.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/glyphs/image_g_32.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/glyphs/image_g_33.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/glyphs/image_g_34.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/glyphs/image_g_35.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/glyphs/image_g_36.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/glyphs/image_g_37.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/glyphs/image_g_38.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/glyphs/image_g_39.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/glyphs/image_g_3A.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/glyphs/image_g_3B.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/glyphs/image_g_3F.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/glyphs/image_g_40.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/glyphs/image_g_41.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/glyphs/image_g_42.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/glyphs/image_g_43.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/glyphs/image_g_44.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/glyphs/image_g_45.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/glyphs/image_g_46.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/glyphs/image_g_47.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/glyphs/image_g_48.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/glyphs/image_g_49.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/glyphs/image_g_4A.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/glyphs/image_g_4B.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/glyphs/image_g_4C.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/glyphs/image_g_4D.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/glyphs/image_g_4E.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/glyphs/image_g_4F.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/glyphs/image_g_50.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/glyphs/image_g_51.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/glyphs/image_g_52.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/glyphs/image_g_53.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/glyphs/image_g_54.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/glyphs/image_g_55.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/glyphs/image_g_56.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/glyphs/image_g_57.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/glyphs/image_g_58.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/glyphs/image_g_59.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/glyphs/image_g_5A.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/glyphs/image_g_5F.cpp
     ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/hero/image_hero_00.cpp
     ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/hero/image_hero_01.cpp
     ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/hero/image_hero_02.cpp
@@ -218,6 +274,19 @@ set(TouchGFX_Src
     ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/ring/image_ring_14.cpp
     ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/ring/image_ring_15.cpp
     ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/ring/image_ring_idle.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/settings/image_glow_0.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/settings/image_glow_1.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/settings/image_glow_2.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/settings/image_glow_3.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/settings/image_row_0.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/settings/image_row_1.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/settings/image_row_2.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/settings/image_row_3.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/settings/image_rowf_0.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/settings/image_rowf_1.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/settings/image_rowf_2.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/settings/image_rowf_3.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/settings/image_sub_title.cpp
     ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/status/image_batt_bolt.cpp
     ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/status/image_batt_frame.cpp
     ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/status/image_wifi_0.cpp

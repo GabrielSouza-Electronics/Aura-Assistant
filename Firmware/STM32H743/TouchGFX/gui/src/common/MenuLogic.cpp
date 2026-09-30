@@ -1,11 +1,13 @@
 #include <gui/common/MenuLogic.hpp>
+#include <gui/common/HandInput.hpp>
 #include <math.h>
+
+using namespace HandInput;
 
 /* --- geometria do carrossel, em coordenadas JA ROTACIONADAS -------------
    No sistema nao girado o carrossel ficava em (240, 232) com o anel
    inclinado no eixo Y. Girar 90 a esquerda troca os eixos: o centro vira
    (232, 239) e a inclinacao passa para o eixo X.                         */
-static const float PI_F      = 3.14159265f;
 static const float STEP      = 2.0f * PI_F / ML_COUNT;   /* 72 graus       */
 static const float MENU_CX   = 232.0f;
 static const float MENU_CY   = 239.0f;
@@ -14,17 +16,12 @@ static const float CAM_D     = 3.4f;
 static const float RING_TILT = 46.0f;
 
 /* --- interacao --------------------------------------------------------- */
-static const float SPIN_GAIN = -0.055f;   /* negativo = sentido invertido  */
-static const float HYST      = 0.60f;
+/* SPIN_GAIN, HYST, CENTER_*, ACT_* vem de HandInput.hpp (compartilhados
+   com o Settings).                                                       */
 static const int   DWELL_N   = 72;        /* 1,2 s a 60 Hz                 */
-static const float ACT_DOWN  = -0.55f;
-static const int   ACT_HOLD  = 12;
+static const float ACT_DOWN  = -ACT_THRESHOLD;
 static const float VIS_K     = 0.10f;
 static const float TILT_MAX  = 26.0f;
-static const float CENTER_ENTER = 0.20f;
-static const float CENTER_EXIT  = 0.35f;
-static const float CENTER_GAIN  = 0.14f;
-static const float CENTER_EPS   = 0.003f;
 
 static const int16_t ICON_SZ[3] = { 36, 48, 64 };
 
@@ -43,6 +40,8 @@ MenuLogic::MenuLogic()
     tilt = 0.0f;
     vis = 0.0f;
     navEvent = 0;
+    verticalBack = true;
+    spinLock = false;
     for (int i = 0; i < ML_COUNT; i++)
     {
         grow[i] = 0.0f;
@@ -66,6 +65,9 @@ void MenuLogic::back()
     armed = false;
     if (screen >= 0)
     {
+        /* quem saiu empurrando para o lado ainda esta com a mao fora do
+           centro: sem a trava o carrossel voltaria girando             */
+        spinLock = true;
         screen = -1;
         navEvent = 2;
         msg = 70;
@@ -107,7 +109,13 @@ void MenuLogic::tick(bool handPresent, float handX, float handY, bool click)
         if (magnitude <= CENTER_ENTER) centering = true;
         else if (magnitude >= CENTER_EXIT) centering = false;
     }
-    const float h = (handPresent && !click && !centering) ? handX : 0.0f;
+    if (spinLock && (!handPresent || fabsf(handX) < CENTER_EXIT))
+    {
+        spinLock = false;
+    }
+    /* com um menu aberto o carrossel esta escondido: nao gira por baixo */
+    const float h = (handPresent && !click && !centering && !spinLock &&
+                     screen < 0) ? handX : 0.0f;
     angle += SPIN_GAIN * h;
     if (h != 0.0f)
     {
@@ -167,7 +175,7 @@ void MenuLogic::tick(bool handPresent, float handX, float handY, bool click)
     /* --- eixo vertical: inclinar / cancelar --- */
     tilt = vy * TILT_MAX;
 
-    if (handPresent && vy < ACT_DOWN)
+    if (handPresent && vy < ACT_DOWN && (verticalBack || screen < 0))
     {
         actHold++;
         if (actHold >= ACT_HOLD)
