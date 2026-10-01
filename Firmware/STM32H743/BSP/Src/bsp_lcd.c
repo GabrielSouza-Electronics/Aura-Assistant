@@ -15,8 +15,6 @@ static volatile bool lcd_backlight_enabled;
 static volatile uint8_t lcd_brightness = 100U;
 static uint8_t lcd_pwm_phase;
 static uint8_t lcd_pwm_duty;
-static volatile uint32_t lcd_serial_clock_edges;
-static volatile uint32_t lcd_command_count;
 
 static int32_t BSP_LCD_WriteGPIO(GPIO_TypeDef *port,
                                  uint16_t pin,
@@ -31,20 +29,12 @@ static int32_t BSP_LCD_WriteGPIO(GPIO_TypeDef *port,
 static int32_t BSP_LCD_IO_WriteCS(void *context, uint8_t level)
 {
     (void)context;
-    if (level == BSP_LCD_PIN_LOW)
-    {
-        ++lcd_command_count;
-    }
     return BSP_LCD_WriteGPIO(LCD_CS_GPIO_Port, LCD_CS_Pin, level);
 }
 
 static int32_t BSP_LCD_IO_WriteSCL(void *context, uint8_t level)
 {
     (void)context;
-    if (level != BSP_LCD_PIN_LOW)
-    {
-        ++lcd_serial_clock_edges;
-    }
     return BSP_LCD_WriteGPIO(LCD_SCL_GPIO_Port, LCD_SCL_Pin, level);
 }
 
@@ -137,8 +127,6 @@ BSP_LCD_Status_t BSP_LCD_Init(void)
 
     lcd_initialized = false;
     lcd_backlight_enabled = false;
-    lcd_serial_clock_edges = 0U;
-    lcd_command_count = 0U;
 
     /* Safe panel state: controller selected only during transfers, reset
        asserted, serial clock low and backlight disabled. */
@@ -222,16 +210,6 @@ BSP_LCD_Status_t BSP_LCD_WriteCommand(uint8_t command,
                              command,
                              parameters,
                              parameter_count));
-}
-
-uint32_t BSP_LCD_GetSerialClockEdgeCount(void)
-{
-    return lcd_serial_clock_edges;
-}
-
-uint32_t BSP_LCD_GetCommandCount(void)
-{
-    return lcd_command_count;
 }
 
 BSP_LCD_Status_t BSP_LCD_InitController(void)

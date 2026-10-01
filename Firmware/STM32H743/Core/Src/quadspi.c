@@ -23,18 +23,6 @@
 /* USER CODE BEGIN 0 */
 #include "bsp_flash.h"
 
-volatile BSP_FLASH_Status_t qspi_flash_init_status =
-    BSP_FLASH_ERROR_NOT_INITIALIZED;
-volatile BSP_FLASH_Status_t qspi_flash_memory_mapped_status =
-    BSP_FLASH_ERROR_NOT_INITIALIZED;
-volatile BSP_FLASH_Status_t qspi_flash_indirect_read_status =
-    BSP_FLASH_ERROR_NOT_INITIALIZED;
-volatile uint8_t qspi_flash_indirect_probe[4];
-volatile BSP_FLASH_Status_t qspi_flash_jedec_status =
-    BSP_FLASH_ERROR_NOT_INITIALIZED;
-volatile uint8_t qspi_flash_jedec_id[3];
-volatile uint32_t qspi_flash_mapped_probe;
-
 /* USER CODE END 0 */
 
 QSPI_HandleTypeDef hqspi;
@@ -68,35 +56,12 @@ void MX_QUADSPI_Init(void)
   /* USER CODE BEGIN QUADSPI_Init 2 */
   /* TouchGFX assets may reside at 0x90000000. The flash must be identified,
      configured for Quad I/O and memory-mapped before MX_TouchGFX_Init(). */
-  qspi_flash_init_status = BSP_FLASH_Init();
-  if (qspi_flash_init_status != BSP_FLASH_OK)
+  /* BSP_FLASH_Init() resets the device and verifies its JEDEC ID. */
+  if ((BSP_FLASH_Init() != BSP_FLASH_OK) ||
+      (BSP_FLASH_EnableMemoryMappedMode() != BSP_FLASH_OK))
   {
     Error_Handler();
   }
-
-  qspi_flash_jedec_status = BSP_FLASH_ReadJEDECID(
-      (uint8_t *)(uintptr_t)qspi_flash_jedec_id);
-  if (qspi_flash_jedec_status != BSP_FLASH_OK)
-  {
-    Error_Handler();
-  }
-
-  qspi_flash_indirect_read_status = BSP_FLASH_Read(
-      0x00000624U,
-      (uint8_t *)(uintptr_t)qspi_flash_indirect_probe,
-      sizeof(qspi_flash_indirect_probe));
-  if (qspi_flash_indirect_read_status != BSP_FLASH_OK)
-  {
-    Error_Handler();
-  }
-
-  qspi_flash_memory_mapped_status = BSP_FLASH_EnableMemoryMappedMode();
-  if (qspi_flash_memory_mapped_status != BSP_FLASH_OK)
-  {
-    Error_Handler();
-  }
-  qspi_flash_mapped_probe =
-      *(const volatile uint32_t *)(uintptr_t)0x90000624UL;
 
   /* USER CODE END QUADSPI_Init 2 */
 

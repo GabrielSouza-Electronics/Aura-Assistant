@@ -15,7 +15,8 @@
  *                              anterior (histerese)
  *   movimento               -> SPIN_GAIN por tick, proporcional a posicao
  *   troca de item           -> so depois de passar HYST do caminho
- *   acao (voltar/entrar)    -> mao alem de ACT_THRESHOLD por ACT_HOLD ticks
+ *   acao (entrar/cancelar)  -> mao alem de ACT_THRESHOLD por ACT_HOLD ticks
+ *   voltar de um submenu    -> mao para BAIXO por BACK_HOLD ticks (500 ms)
  */
 namespace HandInput
 {
@@ -28,6 +29,7 @@ static const float CENTER_GAIN   = 0.14f;
 static const float CENTER_EPS    = 0.003f;   /* rad no carrossel */
 static const float ACT_THRESHOLD = 0.55f;
 static const int   ACT_HOLD      = 12;       /* 200 ms a 60 Hz */
+static const int   BACK_HOLD     = 30;       /* 500 ms a 60 Hz: "pull down to go back" */
 }
 
 #endif

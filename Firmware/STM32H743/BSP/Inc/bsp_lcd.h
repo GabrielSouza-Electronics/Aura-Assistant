@@ -35,8 +35,6 @@ BSP_LCD_Status_t BSP_LCD_SetBrightness(uint8_t percent);
 uint8_t BSP_LCD_GetBrightness(void);
 /* Called only from the existing 1 ms HAL timebase ISR; no RTOS calls. */
 void BSP_LCD_BacklightTick1ms(void);
-uint32_t BSP_LCD_GetSerialClockEdgeCount(void);
-uint32_t BSP_LCD_GetCommandCount(void);
 
 /** Send one ST7701S command through the Aura 3-line serial GPIO interface. */
 BSP_LCD_Status_t BSP_LCD_WriteCommand(uint8_t command,

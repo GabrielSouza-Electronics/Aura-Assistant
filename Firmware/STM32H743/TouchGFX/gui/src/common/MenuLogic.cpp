@@ -177,8 +177,10 @@ void MenuLogic::tick(bool handPresent, float handX, float handY, bool click)
 
     if (handPresent && vy < ACT_DOWN && (verticalBack || screen < 0))
     {
+        /* Leaving a submenu needs a deliberate 500 ms hold; on the carousel
+           the same gesture is only a quick cancel of the dwell.        */
         actHold++;
-        if (actHold >= ACT_HOLD)
+        if (actHold >= ((screen >= 0) ? BACK_HOLD : ACT_HOLD))
         {
             back();
             actHold = 0;

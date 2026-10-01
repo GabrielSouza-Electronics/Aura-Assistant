@@ -526,6 +526,8 @@ void Screen1View::handleTickEvent()
     {
         if (!wasCalendar) calendar.enter();
         else if (calendar.tick(handPresent, handX, handY)) menu.close();
+        // Month change uses the same feedback as moving between options.
+        if (calendar.takeMonthChanged()) presenter->playMenuSound(MenuSound::Tick);
     }
     if (calendar.isVisible() && menu.getScreen() != 3)
     {
@@ -541,6 +543,10 @@ void Screen1View::handleTickEvent()
     }
     handleSettingsEvents();
     const bool inSettings = (menu.getScreen() == SCREEN_SETTINGS);
+    /* LED breath hue: Settings uses the emerald focus colour of its rows
+       (gen_settings.py C_FOCUS 40,220,150, scaled to full brightness). */
+    if (inSettings) presenter->setLEDBreathColor(46, 255, 174);
+    else presenter->setLEDBreathColor(0, 255, 255);
 
     const MenuSound sound = menuSoundForTransition(previousScreen, previousItem,
         menu.getScreen(), menu.getSelected(), previousHandPresent, handPresent);
@@ -559,8 +565,9 @@ void Screen1View::handleTickEvent()
         // Keep the shared live status header visible while viewing the calendar.
         for (Drawable* widget : home) widget->setVisible(!inCalendar);
         board.setAlpha(inCalendar ? 102 : 255); // 40%, independent of backlight.
-        if (inCalendar) { hero.stopAnimation(); divSpark.stopAnimation(); }
-        else { hero.startAnimation(false, false, true); divSpark.startAnimation(false, false, true); }
+        /* The hidden Hero keeps animating: its frames drive the LED breath. */
+        if (inCalendar) divSpark.stopAnimation();
+        else divSpark.startAnimation(false, false, true);
         invalidate();
     }
     if (inCalendar)

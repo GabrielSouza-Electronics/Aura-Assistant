@@ -1,14 +1,12 @@
 #include "app_provisioning.h"
 #include "provision_protocol.h"
 #include "FreeRTOS.h"
-#include "app.h"
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 int critical_depth;
-volatile APP_WiFiDiagnostics_t app_wifi_diagnostics;
 static uint32_t ticks;
 static bool adv_params_set;
 static unsigned adv_starts, adv_stops;

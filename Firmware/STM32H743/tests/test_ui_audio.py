@@ -97,9 +97,7 @@ int main(void) {
     BSP_AUDIO_OUT_TransferCompleteCallback(); assert(!BSP_AUDIO_OUT_IsBusy() && !active);
     assert(BSP_AUDIO_OUT_PlayEffect48kMono(NULL,1)==BSP_AUDIO_OUT_ERROR_INVALID_ARGUMENT);
     assert(BSP_AUDIO_OUT_PlayEffect48kMono(tick,24001)==BSP_AUDIO_OUT_ERROR_INVALID_ARGUMENT);
-    assert(BSP_AUDIO_OUT_StartEchoStream()==BSP_AUDIO_OUT_OK);
-    assert(BSP_AUDIO_OUT_PlayEffect48kMono(tick,4)==BSP_AUDIO_OUT_ERROR_BUSY);
-    BSP_AUDIO_OUT_StopEchoStream();
+    dma.Init.Mode=DMA_CIRCULAR; // Left behind by the circular welcome stream.
     assert(BSP_AUDIO_OUT_PlayEffect48kMono(tick,4)==BSP_AUDIO_OUT_OK);
     assert(dma.Init.Mode==DMA_NORMAL);
     BSP_AUDIO_OUT_TransferCompleteCallback();

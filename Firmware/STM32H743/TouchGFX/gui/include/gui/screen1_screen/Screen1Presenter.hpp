@@ -34,6 +34,7 @@ public:
     void setHeroBreath(uint8_t level);
     void setCarouselLED(float angle, uint8_t visibility);
     void pulseMenuEnterLED();
+    void setLEDBreathColor(uint8_t red, uint8_t green, uint8_t blue);
     bool startupReady() const;
     void completeStartup();
 

@@ -35,7 +35,7 @@ void CalendarWidget::read()
 }
 void CalendarWidget::enter()
 {
-    read(); navigation.enter(data); ticks=0; pulse=255;
+    read(); navigation.enter(data); ticks=0; pulse=255; monthChanged=false;
 #if defined(STM32H743xx)
     APP_CalendarRequestYear(navigation.year);
 #endif
@@ -61,7 +61,15 @@ int CalendarWidget::status() const
 bool CalendarWidget::tick(bool present,float x,float y)
 {
     unsigned oldYear=navigation.year,oldMonth=navigation.month;
-    if (navigation.gesture(present,x,y)==2) return true;
+    const int oldDirection=navigation.getDirection();
+    const int gesture=navigation.gesture(present,x,y);
+    if (gesture==2) return true;
+    if (gesture!=0) monthChanged=true;
+    if (oldDirection!=navigation.getDirection()) {
+        // Logical 44x44 arrow halos, transformed into Portrait coordinates.
+        Rect leftArrow(148,385,44,44),rightArrow(148,51,44,44);
+        invalidateRect(leftArrow); invalidateRect(rightArrow);
+    }
     ++ticks;
     if (ticks%6==0) {
         unsigned phase=ticks%90;
@@ -139,7 +147,10 @@ void CalendarWidget::draw(const Rect& area) const
         unsigned divisor=1000;
         for (unsigned i=0;i<4;i++,divisor/=10)
             sprite(CAL_YEAR_0+(navigation.year/divisor)%10,left+w+9+i*17+8,170,area);
-        sprite(CAL_ARROW_LEFT,73,170,area); sprite(CAL_ARROW_RIGHT,407,170,area);
+        const int direction=navigation.getDirection();
+        if (direction) sprite(CAL_TODAY,direction<0?73:407,170,area);
+        sprite(CAL_ARROW_LEFT,73,170,area,direction<0?255:150);
+        sprite(CAL_ARROW_RIGHT,407,170,area,direction>0?255:150);
         for (int col=0;col<7;col++) sprite(CAL_WEEKDAY_0+col,90+col*50,208,area);
         int offset=Cal_Weekday(navigation.year,navigation.month,1);
         int days=Cal_Days(navigation.year,navigation.month);

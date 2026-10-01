@@ -1,6 +1,5 @@
 #include "app_provisioning.h"
 #include "provision_protocol.h"
-#include "app.h"
 #include "FreeRTOS.h"
 #include "task.h"
 #include "w61_driver_config.h"
@@ -248,7 +247,6 @@ static bool Status(uint32_t id, bool connected_event)
 
 void APP_ProvisionScanResult(int32_t status, W6X_WiFi_Scan_Result_t *results)
 {
-    app_wifi_diagnostics.wifi_scan_callback_status = (uint32_t)status;
     taskENTER_CRITICAL();
     if (scan.pending)
     {
@@ -261,13 +259,6 @@ void APP_ProvisionScanResult(int32_t status, W6X_WiFi_Scan_Result_t *results)
             if (scan.count != 0U) { memcpy(scan.ap, results->AP, scan.count * sizeof(scan.ap[0])); }
         }
         scan.done = true;
-        app_wifi_diagnostics.wifi_ap_count = scan.count;
-        app_wifi_diagnostics.wifi_best_rssi = INT32_MIN;
-        for (uint32_t i = 0U; i < scan.count; ++i)
-        {
-            if (scan.ap[i].RSSI > app_wifi_diagnostics.wifi_best_rssi)
-            { app_wifi_diagnostics.wifi_best_rssi = scan.ap[i].RSSI; }
-        }
     }
     taskEXIT_CRITICAL();
 }
@@ -292,7 +283,6 @@ static void Scan(uint32_t id)
     options.MaxCnt = SCAN_MAX;
     app_provision_diagnostics.scan_stage = "calling_wifi_scan";
     W6X_Status_t result = W6X_WiFi_Scan(&options, APP_ProvisionScanResult);
-    app_wifi_diagnostics.wifi_scan_status = (uint32_t)result;
     if (result != W6X_STATUS_OK)
     {
         /* Keep ownership: an AT timeout can still deliver a late callback. */
@@ -669,9 +659,7 @@ void APP_ProvisionPoll(void)
             (TickType_t)(xTaskGetTickCount() - stop_advertising_tick) >= pdMS_TO_TICKS(1000U))
         {
             stop_advertising_tick = xTaskGetTickCount();
-            W6X_Status_t result = W6X_Ble_AdvStop();
-            app_wifi_diagnostics.ble_adv_status = (uint32_t)result;
-            stop_advertising_pending = result != W6X_STATUS_OK;
+            stop_advertising_pending = W6X_Ble_AdvStop() != W6X_STATUS_OK;
         }
         if (connected)
         {
@@ -695,7 +683,6 @@ void APP_ProvisionPoll(void)
              * (result ignored: it may legitimately fail if not advertising). */
             (void)W6X_Ble_AdvStop();
             W6X_Status_t result = W6X_Ble_AdvStart();
-            app_wifi_diagnostics.ble_adv_status = (uint32_t)result;
             if (result == W6X_STATUS_OK)
             {
                 restart_advertising = false;

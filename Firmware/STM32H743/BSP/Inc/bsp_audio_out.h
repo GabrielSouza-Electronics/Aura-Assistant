@@ -28,19 +28,12 @@ uint8_t BSP_AUDIO_OUT_GetVolume(void);
 void BSP_AUDIO_OUT_SetSynchronizationHooks(BSP_AUDIO_OUT_PrepareWait_t prepare_wait,
                                            BSP_AUDIO_OUT_Wait_t wait,
                                            BSP_AUDIO_OUT_Signal_t signal);
-BSP_AUDIO_OUT_Status_t BSP_AUDIO_OUT_PlayPCM16kStereoBlocking(
-    const int16_t *pcm_stereo, size_t frame_count, uint32_t timeout_ms);
 BSP_AUDIO_OUT_Status_t BSP_AUDIO_OUT_PlayPCM48kMonoBlocking(
     const int16_t *pcm_mono, size_t sample_count, uint32_t timeout_ms);
 /* AudioOutputTask only. Nonblocking, up to 500 ms; restarts an existing effect.
  * Other playback modes retain ownership and return BUSY. */
 BSP_AUDIO_OUT_Status_t BSP_AUDIO_OUT_PlayEffect48kMono(
     const int16_t *pcm_mono, size_t sample_count);
-BSP_AUDIO_OUT_Status_t BSP_AUDIO_OUT_StartEchoStream(void);
-BSP_AUDIO_OUT_Status_t BSP_AUDIO_OUT_QueueEchoBlock(
-    const int16_t *pcm_stereo, size_t frame_count);
-BSP_AUDIO_OUT_Status_t BSP_AUDIO_OUT_StopEchoStream(void);
-uint32_t BSP_AUDIO_OUT_GetEchoUnderrunCount(void);
 bool BSP_AUDIO_OUT_IsBusy(void);
 uint32_t BSP_AUDIO_OUT_GetLastHALerror(void);
 void BSP_AUDIO_OUT_HalfTransferCallback(void);

@@ -120,9 +120,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     # Components
     Components/ST7701S/st7701s.c
     Components/W25Q128/w25q128.c
-    Components/ISM330DLC/ism330dlc.c
     Components/ISM330DLC/ism330dlc_reg.c
-    Components/VL53L5CX/vl53l5cx.c
     Components/VL53L5CX/uld/platform.c
     Components/VL53L5CX/uld/vl53l5cx_api.c
     Components/WS2812C/ws2812c.c
@@ -148,7 +146,6 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
     Components/ST7701S
     Components/W25Q128
     Components/ISM330DLC
-    Components/VL53L5CX
     Components/VL53L5CX/uld
     Components/WS2812C
     Components/Audio

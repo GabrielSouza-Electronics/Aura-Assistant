@@ -1,4 +1,5 @@
 #include "app.h"
+#include "bsp_wifi.h"
 #include "app_provisioning.h"
 #include "app_ui_settings.h"
 #include "app_calendar.h"
@@ -8,9 +9,6 @@
 #include "cmsis_os2.h"
 #include "w6x_api.h"
 
-#include <limits.h>
-#include <string.h>
-
 #define APP_WIFI_BLE_RX_BUFFER_SIZE 256U
 
 /* Display signal bars. UI policy, not radio limits: common RSSI buckets. */
@@ -18,38 +16,15 @@
 #define APP_WIFI_RSSI_3_BARS (-60)
 #define APP_WIFI_RSSI_2_BARS (-70)
 
-volatile APP_WiFiDiagnostics_t app_wifi_diagnostics = {
-    .magic = 0x57494649U, /* "WIFI" */
-    .state = APP_WIFI_STATE_OFF,
-    .wifi_best_rssi = INT32_MIN,
-    .wifi_rssi = INT32_MIN,
-    /* UINT32_MAX = not executed, distinct from successful status zero. */
-    .core_status = UINT32_MAX,
-    .callback_status = UINT32_MAX,
-    .wifi_init_status = UINT32_MAX,
-    .net_init_status = UINT32_MAX,
-    .wifi_scan_status = UINT32_MAX,
-    .wifi_scan_callback_status = UINT32_MAX,
-    .ble_init_status = UINT32_MAX,
-    .provision_init_status = UINT32_MAX,
-    .ble_address_status = UINT32_MAX,
-    .ble_adv_status = UINT32_MAX,
-    .last_driver_error = UINT32_MAX,
-    .first_driver_error = UINT32_MAX
-};
-
 static uint8_t app_wifi_ble_rx_buffer[APP_WIFI_BLE_RX_BUFFER_SIZE];
 static volatile uint8_t app_wifi_signal_level;
+/* Written by the W6X event callback, read by APP_WiFiTask. */
+static volatile bool app_wifi_connected;
+static volatile bool app_wifi_has_ip;
 
 uint8_t APP_WiFi_GetSignalLevel(void)
 {
     return app_wifi_signal_level;
-}
-
-static void APP_WiFiSetSignalLevel(uint8_t level)
-{
-    app_wifi_signal_level = level;
-    app_wifi_diagnostics.wifi_signal_level = level;
 }
 
 /* Runs only in APP_WiFiTask after W6X Wi-Fi/Net init succeeded: the W6X
@@ -66,35 +41,32 @@ static void APP_WiFiUpdateSignal(void)
     if (state != W6X_WIFI_STATE_STA_GOT_IP && state != W6X_WIFI_STATE_STA_CONNECTED)
     {
         APP_UISettings_SetText(APP_UI_SETTING_WIFI, "DISCONNECTED");
-        app_wifi_diagnostics.wifi_rssi = INT32_MIN;
-        APP_WiFiSetSignalLevel(0U);
+        app_wifi_signal_level = 0U;
         return;
     }
-    app_wifi_diagnostics.wifi_rssi = info.Rssi;
     info.SSID[sizeof(info.SSID) - 1U] = '\0';
     APP_UISettings_SetText(APP_UI_SETTING_WIFI, (const char *)info.SSID);
-    APP_WiFiSetSignalLevel(state != W6X_WIFI_STATE_STA_GOT_IP ? 0U :
-                           (info.Rssi >= APP_WIFI_RSSI_3_BARS) ? 3U :
-                           (info.Rssi >= APP_WIFI_RSSI_2_BARS) ? 2U : 1U);
+    app_wifi_signal_level = (state != W6X_WIFI_STATE_STA_GOT_IP) ? 0U :
+                            (info.Rssi >= APP_WIFI_RSSI_3_BARS) ? 3U :
+                            (info.Rssi >= APP_WIFI_RSSI_2_BARS) ? 2U : 1U;
 }
 
 static void APP_WiFiEventCallback(W6X_event_id_t event_id, void *event_args)
 {
     (void)event_args;
-    app_wifi_diagnostics.last_wifi_event = event_id;
     APP_ProvisionWiFiEvent();
 
     switch (event_id)
     {
         case W6X_WIFI_EVT_CONNECTED_ID:
-            app_wifi_diagnostics.wifi_connected = true;
+            app_wifi_connected = true;
             break;
         case W6X_WIFI_EVT_GOT_IP_ID:
-            app_wifi_diagnostics.wifi_has_ip = true;
+            app_wifi_has_ip = true;
             break;
         case W6X_WIFI_EVT_DISCONNECTED_ID:
-            app_wifi_diagnostics.wifi_connected = false;
-            app_wifi_diagnostics.wifi_has_ip = false;
+            app_wifi_connected = false;
+            app_wifi_has_ip = false;
             break;
         default:
             break;
@@ -102,53 +74,17 @@ static void APP_WiFiEventCallback(W6X_event_id_t event_id, void *event_args)
 }
 
 /* W6X_Net_Init refuses to start without a registered Net callback. Sockets are
- * not used yet; only the last event is kept for diagnostics. */
+ * not used yet. */
 static void APP_NetEventCallback(W6X_event_id_t event_id, void *event_args)
 {
+    (void)event_id;
     (void)event_args;
-    app_wifi_diagnostics.last_net_event = event_id;
 }
 
 static void APP_BleEventCallback(W6X_event_id_t event_id, void *event_args)
 {
     APP_ProvisionBleEvent(event_id, event_args, app_wifi_ble_rx_buffer,
                           sizeof(app_wifi_ble_rx_buffer));
-    app_wifi_diagnostics.last_ble_event = event_id;
-
-    if (event_id == W6X_BLE_EVT_CONNECTED_ID)
-    {
-        app_wifi_diagnostics.ble_connected = true;
-        ++app_wifi_diagnostics.ble_connection_count;
-    }
-    else if (event_id == W6X_BLE_EVT_DISCONNECTED_ID)
-    {
-        app_wifi_diagnostics.ble_connected = false;
-    }
-}
-
-static void APP_WiFiDriverErrorCallback(W6X_Status_t status,
-                                        char const *function_name)
-{
-    /* TranslateErrorStatus supplies __func__ strings with static lifetime. */
-    if (app_wifi_diagnostics.first_driver_error == UINT32_MAX)
-    {
-        app_wifi_diagnostics.first_driver_error = (uint32_t)status;
-        app_wifi_diagnostics.first_driver_error_function = function_name;
-    }
-    app_wifi_diagnostics.last_driver_error_function = function_name;
-    app_wifi_diagnostics.last_driver_error = (uint32_t)status;
-    ++app_wifi_diagnostics.error_count;
-}
-
-static bool APP_WiFiStatusFailed(W6X_Status_t status)
-{
-    if (status != W6X_STATUS_OK)
-    {
-        ++app_wifi_diagnostics.error_count;
-        app_wifi_diagnostics.state = APP_WIFI_STATE_ERROR;
-        return true;
-    }
-    return false;
 }
 
 void APP_WiFiTask(void)
@@ -158,7 +94,7 @@ void APP_WiFiTask(void)
         .APP_net_cb = APP_NetEventCallback,
         .APP_mqtt_cb = NULL,
         .APP_ble_cb = APP_BleEventCallback,
-        .APP_error_cb = APP_WiFiDriverErrorCallback
+        .APP_error_cb = NULL
     };
     bool provisioning_ready = false;
     bool radio_ready = false;
@@ -167,103 +103,33 @@ void APP_WiFiTask(void)
     bool had_connection = false;
     bool ble_shown = false;
 
-    app_wifi_diagnostics.bsp_status = BSP_WIFI_Init();
-    app_wifi_diagnostics.powered = BSP_WIFI_IsPowered();
-    app_wifi_diagnostics.enabled = BSP_WIFI_IsEnabled();
-    app_wifi_diagnostics.ready = BSP_WIFI_IsReady();
-    if (app_wifi_diagnostics.bsp_status != BSP_WIFI_OK)
-    {
-        ++app_wifi_diagnostics.error_count;
-        app_wifi_diagnostics.state = APP_WIFI_STATE_ERROR;
-        goto idle;
-    }
-    app_wifi_diagnostics.state = APP_WIFI_STATE_POWERED;
-
-    app_wifi_diagnostics.core_status = (uint32_t)W6X_Init();
-    if (APP_WiFiStatusFailed((W6X_Status_t)app_wifi_diagnostics.core_status))
-    {
-        goto idle;
-    }
-    app_wifi_diagnostics.state = APP_WIFI_STATE_CORE_READY;
-    app_wifi_diagnostics.enabled = BSP_WIFI_IsEnabled();
-    app_wifi_diagnostics.ready = BSP_WIFI_IsReady();
-
-    app_wifi_diagnostics.callback_status =
-        (uint32_t)W6X_RegisterAppCb(&callbacks);
-    if (APP_WiFiStatusFailed(
-            (W6X_Status_t)app_wifi_diagnostics.callback_status))
-    {
-        goto idle;
-    }
-
-    const W6X_ModuleInfo_t *module_info = W6X_GetModuleInfo();
-    if (module_info != NULL)
-    {
-        memcpy((void *)app_wifi_diagnostics.module_mac,
-               module_info->Mac_Address,
-               sizeof(app_wifi_diagnostics.module_mac));
-        memcpy((void *)app_wifi_diagnostics.module_sdk_version,
-               &module_info->SDK_Version,
-               sizeof(app_wifi_diagnostics.module_sdk_version));
-        memcpy((void *)app_wifi_diagnostics.module_at_version,
-               &module_info->AT_Version,
-               sizeof(app_wifi_diagnostics.module_at_version));
-        memcpy((void *)app_wifi_diagnostics.module_build_date,
-               module_info->Build_Date,
-               sizeof(app_wifi_diagnostics.module_build_date));
-        memcpy((void *)app_wifi_diagnostics.module_name,
-               module_info->ModuleID.ModuleName,
-               sizeof(app_wifi_diagnostics.module_name));
-        app_wifi_diagnostics.module_id =
-            (uint32_t)module_info->ModuleID.ModuleID;
-    }
-
-    app_wifi_diagnostics.wifi_init_status = (uint32_t)W6X_WiFi_Init();
-    if (APP_WiFiStatusFailed(
-            (W6X_Status_t)app_wifi_diagnostics.wifi_init_status))
-    {
-        goto idle;
-    }
-
-    /* Same order as ST's BLE commissioning example: WiFi -> Net -> BLE.
-     * Without it W6X_Net_* run on a NULL driver object (asserts are compiled
-     * out), which faulted in the AT layer when reading the station IP. */
-    app_wifi_diagnostics.net_init_status = (uint32_t)W6X_Net_Init();
-    if (APP_WiFiStatusFailed(
-            (W6X_Status_t)app_wifi_diagnostics.net_init_status))
+    /* Any failed step leaves the radio idle; the UI keeps showing no IP. */
+    if ((BSP_WIFI_Init() != BSP_WIFI_OK) ||
+        (W6X_Init() != W6X_STATUS_OK) ||
+        (W6X_RegisterAppCb(&callbacks) != W6X_STATUS_OK) ||
+        (W6X_WiFi_Init() != W6X_STATUS_OK) ||
+        /* Same order as ST's BLE commissioning example: WiFi -> Net -> BLE.
+         * Without it W6X_Net_* run on a NULL driver object (asserts are
+         * compiled out), which faulted in the AT layer reading the IP. */
+        (W6X_Net_Init() != W6X_STATUS_OK))
     {
         goto idle;
     }
     radio_ready = true; /* W6X Wi-Fi station queries are now safe */
     (void)APP_CalendarStart();
 
-    app_wifi_diagnostics.ble_init_status = (uint32_t)W6X_Ble_Init(
-        W6X_BLE_MODE_SERVER, app_wifi_ble_rx_buffer,
-        sizeof(app_wifi_ble_rx_buffer));
-    if (APP_WiFiStatusFailed(
-            (W6X_Status_t)app_wifi_diagnostics.ble_init_status))
+    if ((W6X_Ble_Init(W6X_BLE_MODE_SERVER, app_wifi_ble_rx_buffer,
+                      sizeof(app_wifi_ble_rx_buffer)) != W6X_STATUS_OK) ||
+        (APP_ProvisionInit() != W6X_STATUS_OK))
     {
         goto idle;
     }
-    app_wifi_diagnostics.state = APP_WIFI_STATE_RADIOS_READY;
-
-    app_wifi_diagnostics.provision_init_status = (uint32_t)APP_ProvisionInit();
-    if (APP_WiFiStatusFailed((W6X_Status_t)app_wifi_diagnostics.provision_init_status)) { goto idle; }
-    provisioning_ready = true;
-    /* W6X_Net_Init allocates its context and semaphores from the RTOS heap. */
-    app_wifi_diagnostics.heap_min_free = (uint32_t)xPortGetMinimumEverFreeHeapSize();
-
-    app_wifi_diagnostics.ble_address_status =
-        (uint32_t)W6X_Ble_GetBDAddress((uint8_t *)app_wifi_diagnostics.ble_address);
     /* Settings ON starts advertising and the provisioning window. */
+    provisioning_ready = true;
 
 idle:
     for (;;)
     {
-        app_wifi_diagnostics.powered = BSP_WIFI_IsPowered();
-        app_wifi_diagnostics.enabled = BSP_WIFI_IsEnabled();
-        app_wifi_diagnostics.ready = BSP_WIFI_IsReady();
-
         if (provisioning_ready) { APP_ProvisionPoll(); }
         const bool ble_enabled = APP_ProvisionIsEnabled();
         if (ble_enabled != ble_shown)
@@ -275,18 +141,14 @@ idle:
 
         /* Publish the associated SSID even while DHCP is in progress;
          * refresh on association/IP acquisition and then every 3 seconds. */
-        const bool has_ip = app_wifi_diagnostics.wifi_has_ip;
+        const bool has_ip = app_wifi_has_ip;
         APP_CalendarSetOnline(radio_ready && has_ip);
-        const bool connected = app_wifi_diagnostics.wifi_connected || has_ip;
+        const bool connected = app_wifi_connected || has_ip;
         if (!connected && had_connection)
         { APP_UISettings_SetText(APP_UI_SETTING_WIFI, "DISCONNECTED"); }
         if (!has_ip)
         {
-            if (app_wifi_signal_level != 0U)
-            {
-                app_wifi_diagnostics.wifi_rssi = INT32_MIN;
-                APP_WiFiSetSignalLevel(0U);
-            }
+            app_wifi_signal_level = 0U;
         }
         if (connected && radio_ready &&
                  (!had_connection || (has_ip && !had_ip) ||

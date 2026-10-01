@@ -93,6 +93,17 @@ void Model::pulseMenuEnterLED()
 #endif
 }
 
+void Model::setLEDBreathColor(uint8_t red, uint8_t green, uint8_t blue)
+{
+#if defined(STM32H743xx)
+    APP_LED_SetBreathColor(red, green, blue);
+#else
+    (void)red;
+    (void)green;
+    (void)blue;
+#endif
+}
+
 bool Model::startupReady() const
 {
 #if defined(STM32H743xx)

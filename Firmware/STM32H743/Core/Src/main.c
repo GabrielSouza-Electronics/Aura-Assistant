@@ -38,6 +38,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "app.h"
+#include "bsp_audio_in.h"
 #include "bsp_audio_out.h"
 #include "bsp_led.h"
 #include "bsp_lcd.h"
@@ -108,7 +109,7 @@ int main(void)
   SystemClock_Config();
 
   /* Configure the peripherals common clocks */
-  PeriphCommonClock_Config();
+  PeriphCommonClock_Config(); 
 
   /* USER CODE BEGIN SysInit */
 
@@ -158,7 +159,7 @@ int main(void)
   * @brief System Clock Configuration
   * @retval None
   */
-void SystemClock_Config(void) 
+void SystemClock_Config(void)   
 {
   RCC_OscInitTypeDef RCC_OscInitStruct = {0};
   RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};

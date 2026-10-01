@@ -43,6 +43,7 @@ GROUPS = [
     ("divider",        "aura/divider"),
     ("rim",            "aura/rim"),
     ("settings",       "aura/settings"),   # gerado ja girado: gen_settings.py
+    ("glyphs",         "aura/glyphs"),     # atlas de glifos: gen_settings.py
 ]
 
 
@@ -120,51 +121,37 @@ def main():
     print(f"  {len(files)} imagens instaladas em {base}/aura/")
 
     cfg_path = os.path.join(proj, "application.config")
-    cfg = {}
+
+    # NAO escrevo mais as configuracoes POR IMAGEM aqui.
+    #
+    # O formato desse trecho do JSON varia entre versoes do TouchGFX, e
+    # escrever uma chave com o nome ou o tipo errado faz o Designer
+    # DESCARTAR as configuracoes de todas as imagens - elas voltam para
+    # (Default) e o build falha com uma mensagem que nao aponta a causa.
+    #
+    # O Designer aplica configuracao em massa: na aba Images, Ctrl+A para
+    # selecionar tudo e mude as colunas de uma vez. Sao quatro campos, um
+    # minuto de trabalho, e sem risco de corromper o arquivo.
     if os.path.exists(cfg_path):
         try:
-            cfg = json.load(open(cfg_path))
+            json.load(open(cfg_path))
+            print("  application.config existente preservado (nao foi tocado)")
         except Exception:
-            print("  AVISO: application.config existente nao e JSON valido; "
-                  "sera reescrito")
-            cfg = {}
+            print("  AVISO: o application.config nao e JSON valido")
     else:
-        print("  application.config nao existia; criando")
+        print("  application.config nao existe ainda; o Designer cria no "
+              "primeiro Generate Code")
 
-    # LAYOUT ROTATION 90 em todas.
-    #
-    # A aplicacao esta em portrait e o painel e' nativamente landscape. Nesse
-    # caso a documentacao do TouchGFX manda aplicar rotate90 na geracao dos
-    # assets - e o que esta marca faz, por imagem, em vez do flag global.
-    #
-    # As imagens em rot/ ja saem giradas 90 a esquerda pelo gen_rotate.py.
-    # As duas coisas trabalham juntas: o PNG girado casa com a varredura do
-    # painel, e a marca diz ao image converter como interpretar os dados.
-    images = {}
-    for rel in files:
-        images[rel] = {
-            "format": "L8_ARGB8888",
-            "l8_compression": "none",
-            "rotate90": True,
-        }
-
-    cfg.setdefault("image_configuration", {})
-    cfg["image_configuration"]["images"] = images
-    cfg["image_configuration"]["dither_algorithm"] = "off"
-    cfg["image_configuration"]["opaque_image_format"] = "RGB565"
-    cfg["image_configuration"]["non_opaque_image_format"] = "ARGB8888"
-    cfg["image_configuration"]["section"] = "ExtFlashSection"
-    cfg["image_configuration"]["extra_section"] = "ExtFlashSection"
-
-    json.dump(cfg, open(cfg_path, "w"), indent=2)
-    print(f"  application.config escrito: {len(images)} imagens em L8_ARGB8888")
-    print("\n  Agora abra o Designer e clique Generate Code.")
     print()
-    print("  CONFIRA na aba Images que a coluna 'Layout Rotation' mostra 90")
-    print("  em todas. Se estiver vazia, a chave do application.config tem")
-    print("  outro nome nesta versao do TouchGFX: abra o arquivo, veja como")
-    print("  suas imagens ja configuradas aparecem, e troque 'rotate90' no")
-    print("  topo deste script pela chave correta.")
+    print("  CONFIGURE AS IMAGENS NO DESIGNER")
+    print("    aba Images -> Ctrl+A -> ajuste estas quatro colunas:")
+    print("      Image Format     L8_ARGB8888")
+    print("      Compression      None")
+    print("      Layout Rotation  90")
+    print("      Section          ExtFlashSection")
+
+    print()
+    print("  Depois clique Generate Code.")
 
 
 if __name__ == "__main__":

@@ -19,24 +19,6 @@ typedef enum
     BSP_LED_TIMEOUT
 } BSP_LED_Status_t;
 
-typedef struct
-{
-    uint32_t show_count;
-    uint32_t callback_count;
-    uint32_t dma_remaining;
-    uint32_t dma_control;
-    uint32_t dma_high_isr;
-    uint32_t dma_state;
-    uint32_t dma_error;
-    uint32_t tim_counter;
-    uint32_t tim_dma_interrupt_enable;
-    uint32_t tim_capture_compare_enable;
-    uint32_t primask;
-    uint32_t basepri;
-} BSP_LED_Diagnostics_t;
-
-extern volatile BSP_LED_Diagnostics_t bsp_led_diagnostics;
-
 BSP_LED_Status_t BSP_LED_Init(void);
 BSP_LED_Status_t BSP_LED_SetPixel(size_t index,
                                  uint8_t red,

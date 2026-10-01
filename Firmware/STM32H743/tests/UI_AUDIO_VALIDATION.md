@@ -87,8 +87,7 @@ sem aumento de buffer DMA ou heap.
 ## Premissas e testes físicos pendentes
 
 O welcome termina antes de iniciar o serviço de efeitos. Durante o welcome,
-somente o evento mais recente fica pendente. No modo experimental
-`APP_AUDIO_ECHO_TEST`, as solicitações são ignoradas pois o loopback possui I2S1.
+somente o evento mais recente fica pendente.
 
 Os testes de host não validam temporização real de interrupções, latência audível
 ou comportamento do amplificador. Próximo passo: na placa, girar rapidamente,

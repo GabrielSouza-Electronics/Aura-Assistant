@@ -309,10 +309,10 @@ void LED_Task(void *argument)
 void Logging_Task(void *argument)
 {
   /* USER CODE BEGIN Logging_Task */
-  /* Infinite loop */
+  /* No logging service yet: park the task instead of waking every tick. */
   for(;;)
   {
-    osDelay(1);
+    osDelay(osWaitForever);
   }
   /* USER CODE END Logging_Task */
 }

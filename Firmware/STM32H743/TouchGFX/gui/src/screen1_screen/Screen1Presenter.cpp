@@ -67,6 +67,11 @@ void Screen1Presenter::pulseMenuEnterLED()
     model->pulseMenuEnterLED();
 }
 
+void Screen1Presenter::setLEDBreathColor(uint8_t red, uint8_t green, uint8_t blue)
+{
+    model->setLEDBreathColor(red, green, blue);
+}
+
 bool Screen1Presenter::startupReady() const
 {
     return model->startupReady();

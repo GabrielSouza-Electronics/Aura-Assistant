@@ -16,29 +16,11 @@ static WS2812C_Color_t led_pixels[BSP_LED_COUNT];
 static WS2812C_Handle_t led_driver;
 static volatile bool led_transfer_active;
 static bool led_initialized;
-volatile BSP_LED_Diagnostics_t bsp_led_diagnostics;
 
 /* DMA1 cannot access DTCM. The linker places this buffer in D2 SRAM and the
    cache line alignment allows safe D-Cache maintenance before transmission. */
 __attribute__((section(".dma_buffer"), aligned(32)))
 static uint16_t led_pwm_buffer[BSP_LED_PWM_BUFFER_LENGTH];
-
-static void BSP_LED_CaptureDiagnostics(void)
-{
-    DMA_HandleTypeDef *const dma = htim1.hdma[TIM_DMA_ID_CC2];
-
-    bsp_led_diagnostics.dma_remaining =
-        __HAL_DMA_GET_COUNTER(dma);
-    bsp_led_diagnostics.dma_control = DMA1_Stream4->CR;
-    bsp_led_diagnostics.dma_high_isr = DMA1->HISR;
-    bsp_led_diagnostics.dma_state = (uint32_t)dma->State;
-    bsp_led_diagnostics.dma_error = dma->ErrorCode;
-    bsp_led_diagnostics.tim_counter = TIM1->CNT;
-    bsp_led_diagnostics.tim_dma_interrupt_enable = TIM1->DIER;
-    bsp_led_diagnostics.tim_capture_compare_enable = TIM1->CCER;
-    bsp_led_diagnostics.primask = __get_PRIMASK();
-    bsp_led_diagnostics.basepri = __get_BASEPRI();
-}
 
 static BSP_LED_Status_t BSP_LED_FromDriverStatus(WS2812C_Status_t status)
 {
@@ -60,7 +42,6 @@ BSP_LED_Status_t BSP_LED_Init(void)
 
     led_initialized = false;
     led_transfer_active = false;
-    bsp_led_diagnostics = (BSP_LED_Diagnostics_t){0};
 
     if ((timer_clock_hz != BSP_LED_TIMER_CLOCK_HZ) ||
         (htim1.Init.Prescaler != 0U) ||
@@ -147,7 +128,6 @@ BSP_LED_Status_t BSP_LED_Show(void)
     SCB_CleanDCache_by_Addr((uint32_t *)(void *)led_pwm_buffer,
                             (int32_t)sizeof(led_pwm_buffer));
     led_transfer_active = true;
-    ++bsp_led_diagnostics.show_count;
     if (HAL_TIM_PWM_Start_DMA(&htim1, BSP_LED_TIMER_CHANNEL,
                               (const uint32_t *)(const void *)led_pwm_buffer,
                               (uint16_t)transfer_length) != HAL_OK)
@@ -173,7 +153,6 @@ BSP_LED_Status_t BSP_LED_ShowBlocking(uint32_t timeout_ms)
     {
         if ((HAL_GetTick() - start_tick) >= timeout_ms)
         {
-            BSP_LED_CaptureDiagnostics();
             (void)HAL_TIM_PWM_Stop_DMA(&htim1, BSP_LED_TIMER_CHANNEL);
             __HAL_TIM_SET_COMPARE(&htim1, BSP_LED_TIMER_CHANNEL, 0U);
             led_transfer_active = false;
@@ -193,8 +172,6 @@ void BSP_LED_TIM_PWM_PulseFinishedCallback(void *timer_instance)
 {
     if ((timer_instance == (void *)TIM1) && led_transfer_active)
     {
-        ++bsp_led_diagnostics.callback_count;
-        BSP_LED_CaptureDiagnostics();
         (void)HAL_TIM_PWM_Stop_DMA(&htim1, BSP_LED_TIMER_CHANNEL);
         __HAL_TIM_SET_COMPARE(&htim1, BSP_LED_TIMER_CHANNEL, 0U);
         led_transfer_active = false;

@@ -1,5 +1,4 @@
 #include "app_ui_audio.h"
-#include "app.h"
 #include "bsp_audio_out.h"
 #include "ui_audio.h"
 #include "cmsis_os2.h"
@@ -13,7 +12,7 @@ static osThreadId_t owner;
 void APP_UIAudio_Request(APP_UIAudioEvent_t event)
 {
     osThreadId_t thread;
-    if (APP_AUDIO_ECHO_TEST || event < APP_UI_AUDIO_TICK || event > APP_UI_AUDIO_EXIT)
+    if (event < APP_UI_AUDIO_TICK || event > APP_UI_AUDIO_EXIT)
         return;
     taskENTER_CRITICAL();
     pending = event;
@@ -41,15 +40,11 @@ void APP_UIAudio_Run(void)
             size_t count = UI_NAV_TICK_COUNT;
             if (event == APP_UI_AUDIO_ENTER) { pcm = ui_menu_enter; count = UI_MENU_ENTER_COUNT; }
             if (event == APP_UI_AUDIO_EXIT) { pcm = ui_menu_exit; count = UI_MENU_EXIT_COUNT; }
-            app_audio_out_diagnostics.last_status = BSP_AUDIO_OUT_PlayEffect48kMono(pcm, count);
-            if (app_audio_out_diagnostics.last_status == BSP_AUDIO_OUT_OK)
-                ++app_audio_out_diagnostics.play_count;
-            else
-                ++app_audio_out_diagnostics.error_count;
+            /* A failed effect is dropped; the next UI event retries. */
+            (void)BSP_AUDIO_OUT_PlayEffect48kMono(pcm, count);
         }
-        app_audio_out_diagnostics.busy = BSP_AUDIO_OUT_IsBusy();
-        app_audio_out_diagnostics.last_hal_error = BSP_AUDIO_OUT_GetLastHALerror();
-        /* Poll completion diagnostics; new requests wake immediately. */
-        (void)osThreadFlagsWait(UI_AUDIO_REQUEST_FLAG, osFlagsWaitAny, 10U);
+        /* Requests set the flag after publishing `pending`, so none is lost. */
+        (void)osThreadFlagsWait(UI_AUDIO_REQUEST_FLAG, osFlagsWaitAny,
+                                osWaitForever);
     }
 }

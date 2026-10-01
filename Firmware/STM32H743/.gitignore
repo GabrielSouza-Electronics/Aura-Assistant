@@ -1,3 +1,6 @@
 /build/
 mx.scratch
 !.settings
+
+# TouchGFX simulator build output (objects, simulator.exe, DLLs)
+/TouchGFX/build/
