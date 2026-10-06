@@ -1,7 +1,7 @@
 #ifndef MENU_SOUND_HPP
 #define MENU_SOUND_HPP
 
-enum class MenuSound { None, Tick, Enter, Exit };
+enum class MenuSound { None, Tick, Enter, Exit, TaskComplete, TaskReopen };
 
 inline MenuSound menuSoundForTransition(int oldScreen, int oldItem,
                                        int newScreen, int newItem,

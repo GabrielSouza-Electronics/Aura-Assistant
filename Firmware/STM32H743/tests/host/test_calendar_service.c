@@ -1,5 +1,8 @@
 /* Include unchanged production implementation to exercise its private worker
  * with deterministic sockets/time, without creating a real RTOS thread. */
+#define APP_WEB_HOST "mock.example"
+#define APP_WEB_DEVICE_TOKEN "test-device-token"
+#define APP_WEB_ROOT_CA_PEM "-----BEGIN CERTIFICATE-----test"
 #include "app_calendar.c"
 #include <assert.h>
 #include <setjmp.h>
@@ -11,6 +14,17 @@ static char tx[512],rx[1024];
 static size_t tx_size,rx_size,rx_pos;
 static void (*entrypoint)(void *);
 static jmp_buf finished;
+static bool web_mode,pending_completion,desired_completion=true;
+static bool reminder_mode;
+static unsigned web_requests,completion_requests,web_publishes,reminder_publishes;
+bool APP_TasksNextCompletion(uint32_t *id) { if(web_mode && pending_completion) { *id=7; return true; } return false; }
+bool APP_TasksAcknowledge(uint32_t id,bool accepted) { assert(id==7 && accepted); pending_completion=false; return true; }
+bool APP_TasksNextChange(uint32_t *id,bool *completed) { *completed=desired_completion; return APP_TasksNextCompletion(id); }
+bool APP_RemindersNextChange(uint32_t *id,bool *completed) { if (!reminder_mode) return false; return APP_TasksNextChange(id,completed); }
+bool APP_RemindersAcknowledgeChange(uint32_t id,bool completed,bool accepted) { assert(reminder_mode); return APP_TasksAcknowledgeChange(id,completed,accepted); }
+bool APP_RemindersPublish(const TaskRecord *r,size_t n,uint32_t revision) { assert(r && n==0 && revision==3); ++reminder_publishes; return true; }
+bool APP_TasksAcknowledgeChange(uint32_t id,bool completed,bool accepted) { assert(completed==desired_completion); return APP_TasksAcknowledge(id,accepted); }
+bool APP_TasksPublish(const TaskRecord *r,size_t n,uint32_t revision) { assert(r && n==0 && revision==3); ++web_publishes; return true; }
 
 TickType_t xTaskGetTickCount(void) { return tick; }
 osThreadId_t osThreadNew(void (*entry)(void *),void *arg,const osThreadAttr_t *attr)
@@ -41,7 +55,20 @@ ssize_t W6X_Net_Send(int sock,const void *data,size_t n,int flags)
     if (strstr(tx,"\r\n\r\n")) {
         char body[600];
         assert(strstr(tx,"Accept-Encoding: identity"));
-        if (strstr(tx,"GET /api/Time/")) {
+        if (web_mode) {
+            assert(strstr(tx,"Authorization: Bearer test-device-token"));
+            if(strstr(tx,reminder_mode?"PUT /api/device/v1/reminders/7/completion":"PUT /api/device/v1/tasks/7/completion")) {
+                if(!strstr(tx,desired_completion?"{\"completed\":true}":"{\"completed\":false}")) return (ssize_t)n;
+                ++completion_requests;
+                strcpy(body,"{\"schemaVersion\":1,\"id\":7,\"accepted\":true}");
+            } else {
+                assert(strstr(tx,"GET /api/device/v1/state?calendar_year=2026")); ++web_requests;
+                strcpy(body,"{\"schemaVersion\":1,\"revision\":3,\"timeZone\":\"Asia/Dubai\","
+                    "\"clock\":{\"year\":2026,\"month\":9,\"day\":30,\"hour\":13,\"minute\":0,\"second\":0},"
+                    "\"calendar\":{\"year\":2026,\"holidays\":[]},\"tasks\":[],\"reminders\":[]}");
+            }
+            rx_size=snprintf(rx,sizeof(rx),"HTTP/1.1 200 OK\r\nContent-Length: %u\r\n\r\n%s",(unsigned)strlen(body),body);
+        } else if (strstr(tx,"GET /api/Time/")) {
             ++time_requests; assert(strstr(tx,"Asia%2FDubai"));
             CalDate now={2026,9,30,12,0,0}; Cal_Advance(&now,elapsed/1000);
             snprintf(body,sizeof(body),"{\"year\":%u,\"month\":%u,\"day\":%u,\"hour\":%u,\"minute\":%u,\"seconds\":%u,\"timeZone\":\"Asia/Dubai\"}",
@@ -70,6 +97,12 @@ void osDelay(uint32_t ticks)
     advance(ticks); ++polls;
     CalSnapshot s; APP_CalendarRead(&s);
     assert(s.time_valid);
+    if(web_mode) {
+        assert(s.now.hour==13 && s.holidays_valid && !s.stale && credentials==0);
+        assert(completion_requests==1 && !pending_completion && web_requests==polls);
+        if(polls==3) longjmp(finished,1);
+        return;
+    }
     switch (polls) {
     case 2:
         assert(time_requests==1 && holiday_requests==1 && s.holidays_valid);
@@ -122,4 +155,20 @@ int main(void)
     assert(!get_json(false,0,&json) && credentials==0);
     assert(closes==10);
     puts("Calendar service: daily refresh, cached years, offline clock, tick wrap, failed fetch preservation, retry and TLS/socket cleanup passed.");
+    connect_failure=false; web_mode=true; pending_completion=true; polls=0;
+    memset(&state,0,sizeof(state)); boot_snapshot(&state.shared);
+    state.clock_tick=state.shared_tick=tick; state.online=true;
+    if(!setjmp(finished)) web_run(NULL);
+    assert(web_publishes==3 && completion_requests==1 && web_requests==3);
+    desired_completion=false; pending_completion=true; polls=0;
+    web_publishes=completion_requests=web_requests=0;
+    if(!setjmp(finished)) web_run(NULL);
+    assert(web_publishes==3 && completion_requests==1 && web_requests==3);
+    puts("Web worker: Bearer auth, PUT completion, 2s polling, clock/calendar publication, partial sends/reads and TLS cleanup passed.");
+    reminder_mode=true; pending_completion=true; polls=0;
+    web_publishes=completion_requests=web_requests=0;
+    if(!setjmp(finished)) web_run(NULL);
+    assert(web_publishes==3 && completion_requests==1 && web_requests==3);
+    puts("Reminders worker: dedicated PUT route and reopen request passed.");
+    assert(reminder_publishes==9);
 }

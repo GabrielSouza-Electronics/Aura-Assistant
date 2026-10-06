@@ -2,6 +2,8 @@
 #include <string.h>
 #include <stdlib.h>
 #include <ctype.h>
+#include "web_state.h"
+
 
 unsigned Cal_Days(unsigned y, unsigned m)
 {
@@ -142,7 +144,7 @@ bool Cal_ParseHolidays(const char *json, unsigned year, CalHolidays *out)
     if (!out || !document(json,&r)||!field(r,"country",&v)||!eq(v,"AE")||
         !number(r,"year",&y)||y!=year||!number(r,"count",&count)||count>64||
         !field(r,"holidays",&a)||*a.begin!='[') return false;
-    CalHolidays result={0}; result.year=y;
+    CalHolidays result={0,{0},{0}}; result.year=y;
     /* A provider may return an empty list for years outside its dataset.
      * An unavailable year must not look like a confirmed year with no holidays. */
     Span available;
@@ -201,14 +203,17 @@ int Cal_HttpBody(char *raw,size_t length,bool eof,bool decode,char **body,size_t
         e=line_end(p,end); if (!e) return length>4096||eof?-1:0;
         if (e-raw>4096) return -1;
         if (e==p) { p=e+2; break; }
-        const char *colon=memchr(p,':',(size_t)(e-p)); if (!colon) return -1;
+        const char *colon=(const char *)memchr(p,':',(size_t)(e-p)); if (!colon) return -1;
         const char *v=colon+1; while (v<e&&(*v==' '||*v=='\t')) ++v;
         const char *ve=e; while (ve>v&&(ve[-1]==' '||ve[-1]=='\t')) --ve;
         if (equal_ci(p,colon-p,"Content-Length")) {
             if (has_length||v==ve) return -1;
             has_length=true;
-            for (;v<ve;v++) { if (*v<'0'||*v>'9'||content>16384) return -1; content=content*10+*v-'0'; }
-            if (content>8192) return -1;
+            for (;v<ve;v++) {
+                if (*v<'0'||*v>'9'||content>(32768U-(unsigned)(*v-'0'))/10U) return -1;
+                content=content*10+*v-'0';
+            }
+            if (content>32768) return -1;
         } else if (equal_ci(p,colon-p,"Transfer-Encoding")) {
             if (chunked||!equal_ci(v,ve-v,"chunked")) return -1;
             chunked=true;
@@ -216,13 +221,13 @@ int Cal_HttpBody(char *raw,size_t length,bool eof,bool decode,char **body,size_t
         p=e+2;
     }
     if (chunked&&has_length) return -1;
-    char *start=(char *)p; size_t total=0;
+    char *start=raw+(p-raw); size_t total=0;
     if (!chunked) {
         size_t available=(size_t)(end-p);
         if (has_length && available<content) return eof?-1:0;
-        if (!has_length&&!eof) return available>8192?-1:0;
+        if (!has_length&&!eof) return available>32768?-1:0;
         total=has_length?content:available;
-        if (total>8192 || available!=total) return -1;
+        if (total>32768 || available!=total) return -1;
     } else {
         for (;;) {
             e=line_end(p,end); if (!e) return eof?-1:0;
@@ -232,10 +237,10 @@ int Cal_HttpBody(char *raw,size_t length,bool eof,bool decode,char **body,size_t
                 unsigned char c=(unsigned char)*h++; unsigned digit;
                 if (c>='0'&&c<='9') digit=c-'0'; else if (c>='a'&&c<='f') digit=c-'a'+10;
                 else if (c>='A'&&c<='F') digit=c-'A'+10; else return -1;
-                if (n>8192) return -1;
+                if (n>(32768U-digit)/16U) return -1;
                 n=n*16+digit;
             }
-            if (h==p || *p==';' || n>8192-total) return -1;
+            if (h==p || *p==';' || n>32768-total) return -1;
             p=e+2;
             if (n==0) {
                 do { e=line_end(p,end); if (!e) return eof?-1:0; bool last=e==p; p=e+2; if (last) break; } while (true);
@@ -250,4 +255,104 @@ int Cal_HttpBody(char *raw,size_t length,bool eof,bool decode,char **body,size_t
     }
     *body=start; *body_length=total;
     return 1;
+}
+
+/* Device web contract reuses the validated bounded JSON walker above. */
+static bool web_u32(Span object,const char *key,uint32_t *out)
+{
+    Span s; if (!field(object,key,&s) || s.begin==s.end) return false;
+    uint32_t n=0;
+    if (s.end-s.begin>1 && *s.begin=='0') return false;
+    for (const char *p=s.begin;p<s.end;++p) {
+        if (*p<'0' || *p>'9' || n>(UINT32_MAX-(unsigned)(*p-'0'))/10) return false;
+        n=n*10+(unsigned)(*p-'0');
+    }
+    *out=n; return true;
+}
+static bool web_bool(Span object,const char *key,bool *out)
+{
+    Span s; if (!field(object,key,&s)) return false;
+    if (s.end-s.begin==4 && !memcmp(s.begin,"true",4)) { *out=true; return true; }
+    if (s.end-s.begin==5 && !memcmp(s.begin,"false",5)) { *out=false; return true; }
+    return false;
+}
+static bool web_text(Span object,const char *key,char *out,size_t capacity)
+{
+    Span s; if (!field(object,key,&s) || s.end-s.begin<2 || *s.begin!='"') return false;
+    size_t n=0;
+    for (const char *p=s.begin+1;p<s.end-1;++p) {
+        unsigned char c=(unsigned char)*p;
+        if (c=='\\') {
+            ++p; if (p>=s.end-1 || !strchr("\"\\/",*p)) return false; c=(unsigned char)*p;
+        }
+        if (c<32 || c>126 || n+1>=capacity) return false;
+        out[n++]=(char)c;
+    }
+    out[n]=0; return n>0;
+}
+static bool web_date(Span object,CalDate *out)
+{
+    uint32_t y,m,d,h,mi,s;
+    if (!web_u32(object,"year",&y)||!web_u32(object,"month",&m)||!web_u32(object,"day",&d)||
+        !web_u32(object,"hour",&h)||!web_u32(object,"minute",&mi)||!web_u32(object,"second",&s)||
+        y>65535||m>255||d>255||h>255||mi>255||s>255) return false;
+    CalDate date_value={(uint16_t)y,(uint8_t)m,(uint8_t)d,(uint8_t)h,(uint8_t)mi,(uint8_t)s};
+    if (!Cal_Valid(&date_value)) return false;
+    *out=date_value; return true;
+}
+static bool web_records(Span items,TaskRecord *records,uint8_t *count)
+{
+    if (*items.begin!='[') return false;
+    const char *p=items.begin+1; ws(&p);
+    while (*p!=']') {
+        if (*count==TASKS_CAPACITY) return false;
+        Span item={p,p},due,category; if(!value(&p,0)) return false; item.end=p;
+        TaskRecord *task=&records[*count];
+        if (!web_u32(item,"id",&task->id)||!task->id||!web_text(item,"title",task->title,sizeof(task->title))||
+            !field(item,"deadline",&due)||!web_date(due,&task->deadline)||
+            !field(item,"category",&category)||!web_bool(item,"completed",&task->completed)) return false;
+        if(eq(category,"Personal")) task->category=TASK_PERSONAL;
+        else if(eq(category,"Work")) task->category=TASK_WORK;
+        else if(eq(category,"Priority")) task->category=TASK_PRIORITY;
+        else if(eq(category,"Project")) task->category=TASK_PROJECT;
+        else return false;
+        for (unsigned i=0;i<*count;++i) if(records[i].id==task->id) return false;
+        ++(*count);
+        ws(&p); if(*p==']') break; if(*p++!=',') return false; ws(&p);
+    }
+    return true;
+}
+bool Web_ParseState(const char *json,unsigned requested_year,WebState *out)
+{
+    Span root,v,clock,calendar,tasks;
+    uint32_t version,revision,year;
+    if (!out || !document(json,&root)||!web_u32(root,"schemaVersion",&version)||version!=1||
+        !web_u32(root,"revision",&revision)||!revision||!field(root,"timeZone",&v)||!eq(v,"Asia/Dubai")||
+        !field(root,"clock",&clock)||!field(root,"calendar",&calendar)||!field(root,"tasks",&tasks)||
+        !web_u32(calendar,"year",&year)||year!=requested_year||*tasks.begin!='[') return false;
+    memset(out,0,sizeof(*out)); out->revision=revision;
+    if (!web_date(clock,&out->now)) return false;
+    out->holidays.year=(uint16_t)year;
+    Span holidays;
+    if (!field(calendar,"holidays",&holidays)||*holidays.begin!='[') return false;
+    const char *p=holidays.begin+1; ws(&p);
+    while (*p!=']') {
+        Span item={p,p}; if(!value(&p,0)) return false; item.end=p;
+        CalDate d; if(!date(item,&d)||d.year!=year) return false;
+        out->holidays.days[d.month-1]|=UINT32_C(1)<<(d.day-1);
+        ws(&p); if(*p==']') break; if(*p++!=',') return false; ws(&p);
+    }
+    if (!web_records(tasks,out->tasks,&out->count)) return false;
+    Span reminders;
+    out->reminders_present=field(root,"reminders",&reminders);
+    if (out->reminders_present && !web_records(reminders,out->reminders,&out->reminder_count)) return false;
+    return true;
+}
+
+bool Web_ParseCompletion(const char *json,uint32_t expected_id,bool *accepted)
+{
+    Span root; uint32_t id,version; bool result;
+    if (!accepted||!document(json,&root)||!web_u32(root,"schemaVersion",&version)||version!=1||
+        !web_u32(root,"id",&id)||id!=expected_id||!web_bool(root,"accepted",&result)) return false;
+    *accepted=result; return true;
 }

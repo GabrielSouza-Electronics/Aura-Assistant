@@ -37,6 +37,9 @@ void Screen1Presenter::handClicked()
     view.requestHandClick();
 }
 
+void Screen1Presenter::handNearUpdated(bool closeRange) { view.setHandNear(closeRange); }
+void Screen1Presenter::handBackRequested() { view.requestHandBack(); }
+
 void Screen1Presenter::wifiLevelUpdated(uint8_t level)
 {
     view.setWifiLevel(level);

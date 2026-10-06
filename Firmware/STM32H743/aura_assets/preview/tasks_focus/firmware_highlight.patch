@@ -1,0 +1,51 @@
+--- a/TouchGFX/gui/include/gui/common/TasksWidget.hpp
++++ b/TouchGFX/gui/include/gui/common/TasksWidget.hpp
+@@ -22,6 +22,7 @@
+     bool completed=false;
+     bool reopened=false;
+     unsigned revealTicks=0;
++    unsigned focusPhase=0;
+     void read();
+     void sprite(const SettingsStyleSprite& s,int x,int y,const touchgfx::Rect& area,uint8_t alpha=255) const;
+     void text(const char* value,int x,int y,int maxWidth,bool title,bool strike,const touchgfx::Rect& area,uint8_t alpha=255) const;
+--- a/TouchGFX/gui/src/common/TasksWidget.cpp
++++ b/TouchGFX/gui/src/common/TasksWidget.cpp
+@@ -41,10 +41,11 @@
+ #endif
+     navigation.page=data.page;
+ }
+-void TasksWidget::enter() { navigation.enter(); read(); changed=false; completed=reopened=false; revealTicks=0; setVisible(true); invalidate(); }
++void TasksWidget::enter() { navigation.enter(); read(); changed=false; completed=reopened=false; revealTicks=focusPhase=0; setVisible(true); invalidate(); }
+ bool TasksWidget::tick(bool present,float x,float y,bool click)
+ {
+     uint32_t oldVersion=data.version; unsigned oldPage=data.page,oldRow=navigation.row;
++    focusPhase=(focusPhase+1)%90;
+     const unsigned oldCount=data.count;
+     const bool animating=revealTicks<28;
+     if (animating) ++revealTicks;
+@@ -71,6 +72,11 @@
+     if (animating || oldVersion!=data.version || oldPage!=data.page || oldRow!=navigation.row ||
+         oldArrow!=navigation.arrow || oldDay!=clock.now.day || oldMinute!=clock.now.minute || valid!=clock.time_valid)
+         invalidate();
++    if (data.count) {
++        // Repaint only the current card for its breathing light.
++        const touchgfx::Rect focusArea(133+navigation.row*63,65,57,350);
++        invalidateRect(focusArea);
++    }
+     return false;
+ }
+ void TasksWidget::sprite(const SettingsStyleSprite& s,int x,int y,const Rect& area,uint8_t alpha) const
+@@ -140,6 +146,13 @@
+             const auto& task=data.rows[i]; int y=133+i*63;
+             sprite(taskSprites[TASK_PANEL],65+slide,y,area,alpha);
+             bool selected=i==navigation.row;
++            if (selected) {
++                const float pulse=0.5f+0.5f*cosf(focusPhase*6.28318530718f/90.0f);
++                const uint8_t cardAlpha=(uint8_t)(alpha*(200.0f+55.0f*pulse)/255.0f);
++                const uint8_t haloAlpha=(uint8_t)(alpha*(100.0f+155.0f*pulse)/255.0f);
++                sprite(taskSprites[TASK_PANEL_FOCUS],65+slide,y,area,cardAlpha);
++                sprite(taskSprites[TASK_FOCUS_HALO],68+slide,y+7,area,haloAlpha);
++            }
+             int id=task.completed?(selected?TASK_FOCUS_DONE:TASK_DONE):(selected?TASK_FOCUS:TASK_CIRCLE);
+             sprite(taskSprites[id],68+slide,y+7,area,alpha);
+             text(task.title,110+slide,y+7,185,true,task.completed,area,alpha);

@@ -95,7 +95,11 @@ def assets():
     for i,day in enumerate(['Mon','Tue','Wed','Thu','Fri','Sat','Sun']):
         result[f'cal_weekday_{i}']=text(day,13, RED if i>=5 else (146,196,221),(42,24))
     result['cal_location']=text('ABU DHABI',10,(113,173,195))
-    result['cal_hint']=text('LEFT / RIGHT  MONTH     DOWN  BACK',9,(113,173,195))
+    lines=[text(label,9,(113,173,195)) for label in ('LEFT / RIGHT MONTH','HOLD CLOSE TO GO BACK')]
+    hint=Image.new('RGBA',(max(line.width for line in lines),max(line.height for line in lines)+15))
+    for row,line in enumerate(lines):
+        hint.alpha_composite(line,((hint.width-line.width)//2,row*15))
+    result['cal_hint']=quantize(hint)
     for key, label in [('sync','WAITING FOR WI-FI TIME'),
                        ('offline','OFFLINE - SAVED HOLIDAYS'),
                        ('loading','HOLIDAYS UNAVAILABLE'),
@@ -154,7 +158,7 @@ def compose(a,year,month,today,holidays,pulse=255,leak=False,colon=True):
         style='muted' if not current else 'holiday' if holiday else 'weekend' if col>=5 else 'normal'
         center(im,a[f'cal_day_{style}_{date.day:02}'],x,y)
     center(im,a['cal_status_estimated'],240,427)
-    center(im,a['cal_hint'],240,447)
+    center(im,a['cal_hint'],240,450)
     return im.convert('RGB')
 
 

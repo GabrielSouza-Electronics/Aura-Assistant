@@ -11,6 +11,8 @@ public:
     virtual ~ModelListener() {}
     virtual void handUpdated(bool, float, float) {}
     virtual void handClicked() {}
+    virtual void handNearUpdated(bool) {}
+    virtual void handBackRequested() {}
     /* 0 = no IP (crossed icon), 1..3 = signal bars. Sent only on change. */
     virtual void wifiLevelUpdated(uint8_t) {}
     /* Settings menu. item: 0 Wi-Fi, 1 Bluetooth, 2 Brightness (same order

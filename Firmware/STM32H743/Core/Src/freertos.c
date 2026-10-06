@@ -26,6 +26,8 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "app_tasks.h"
+#include "app_reminders.h"
 #include "app.h"
 
 /* USER CODE END Includes */
@@ -153,7 +155,9 @@ void vApplicationStackOverflowHook(xTaskHandle xTask, char *pcTaskName)
   * @retval None
   */
 void MX_FREERTOS_Init(void) {
-  /* USER CODE BEGIN Init */
+/* USER CODE BEGIN Init */
+  APP_TasksInit();
+  APP_RemindersInit();
 
   /* USER CODE END Init */
 

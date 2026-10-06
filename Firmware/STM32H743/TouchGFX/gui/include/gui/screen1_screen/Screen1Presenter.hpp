@@ -26,6 +26,8 @@ public:
     virtual void deactivate();
     virtual void handUpdated(bool present, float x, float y);
     virtual void handClicked() override;
+    virtual void handNearUpdated(bool) override;
+    virtual void handBackRequested() override;
     virtual void wifiLevelUpdated(uint8_t level) override;
     virtual void settingTextUpdated(uint8_t item, const char* text) override;
     virtual void volumeUpdated(uint8_t volume) override;

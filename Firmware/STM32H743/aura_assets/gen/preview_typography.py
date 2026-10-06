@@ -71,7 +71,7 @@ def settings_preview(assets,glyphs,space,values,leak=False):
         value=fit_value(glyphs,space,values[i],max_width)
         cy=gs.ROW_Y0+i*gs.ROW_PITCH+gs.ROW_H/2
         im.alpha_composite(value,(round(gs.VALUE_RX+gs.GLYPH_PAD-value.width),round(cy-value.height/2)))
-    centered(im,text('RIGHT SELECT  LEFT BACK',14,(184,223,243)),240,418)
+    centered(im,text('RIGHT SELECT / HOLD CLOSE 2s TO GO BACK',14,(184,223,243)),240,418)
     return im.convert('RGB')
 
 

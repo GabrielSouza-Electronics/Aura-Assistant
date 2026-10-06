@@ -33,5 +33,7 @@ typedef struct
 
 BSP_IMU_Status_t BSP_IMU_Init(void);
 BSP_IMU_Status_t BSP_IMU_Read(BSP_IMU_Data_t *data);
+BSP_IMU_Status_t BSP_IMU_EnableSingleTap(void);
+BSP_IMU_Status_t BSP_IMU_TakeSingleTap(bool *detected);
 
 #endif

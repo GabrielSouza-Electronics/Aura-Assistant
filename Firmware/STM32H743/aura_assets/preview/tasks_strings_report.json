@@ -1,0 +1,43 @@
+{
+  "scope": "Installed Settings atlas; Tasks preview is not firmware",
+  "cases": {
+    "today": 1440,
+    "Yesterday": 1440,
+    "Tomorrow": 1440,
+    "date_time": 527040,
+    "labels_months": 16
+  },
+  "total_cases": 531376,
+  "missing_characters_with_hyphen": [],
+  "missing_requested_separator": [
+    "•"
+  ],
+  "firmware_case": "UPPERCASE",
+  "available_deadline_width_px": 168,
+  "widest": {
+    "today": {
+      "text": "00:44",
+      "width_px": 60
+    },
+    "Yesterday": {
+      "text": "Yesterday - 00:04",
+      "width_px": 182
+    },
+    "Tomorrow": {
+      "text": "Tomorrow - 00:44",
+      "width_px": 193
+    },
+    "date_time": {
+      "text": "04/04 - 00:04",
+      "width_px": 138
+    },
+    "labels_months": {
+      "text": "September",
+      "width_px": 108
+    }
+  },
+  "overflow_cases": {
+    "Yesterday": 1026,
+    "Tomorrow": 1439
+  }
+}

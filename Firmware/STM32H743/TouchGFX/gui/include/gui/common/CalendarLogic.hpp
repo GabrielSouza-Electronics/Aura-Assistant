@@ -4,7 +4,7 @@
 #include <gui/common/HandInput.hpp>
 #include <math.h>
 /* Held horizontal input repeats; entry requires a neutral/released hand.
-   Back (hand down) must be held for HandInput::BACK_HOLD ticks (500 ms).
+   Back is handled globally by a ToF <30 mm hold for two seconds.
    Like MenuLogic, speed is proportional to displacement and tick-based. */
 class CalendarLogic {
 public:
@@ -20,16 +20,10 @@ public:
         }
         if (!armed) return 0;
         int next=0;
-        if (y < -0.65f && -y>fabsf(x)) next=2;
-        else if (fabsf(x)>HandInput::CENTER_ENTER && fabsf(x)>=fabsf(y) &&
+        if (fabsf(x)>HandInput::CENTER_ENTER && fabsf(x)>=fabsf(y) &&
                  (fabsf(x)>=HandInput::CENTER_EXIT || direction==(x>0?1:-1))) next=x>0?1:-1;
         if (next!=2) backHold=0;
         if (!next) { direction=0; progress=0; return 0; }
-        if (next==2) {
-            direction=0; progress=0;
-            if (++backHold<HandInput::BACK_HOLD) return 0;
-            backHold=0; armed=false; return 2;
-        }
         if (!year) { direction=0; progress=0; return 0; }
         const bool changed=next!=direction;
         direction=next;

@@ -47,7 +47,7 @@ MSGS = {
     "cancelled": "CANCELLED",
     "move": "MOVE TO CONTINUE",
     "nocontent": "NO CONTENT YET",
-    "back": "PULL DOWN TO GO BACK",
+    "back": "HOLD FINGER CLOSE 2s TO GO BACK",
 }
 
 C_LOW, C_MID, C_HIGH = (30, 96, 150), (150, 215, 245), (235, 248, 255)

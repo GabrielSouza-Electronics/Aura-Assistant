@@ -1,5 +1,6 @@
 #include "TypographyHints.hpp"
 #include "StartupAssets.hpp"
+#include "SettingsStyleAssets.hpp"
 #include <math.h>
 #include <gui/screen1_screen/Screen1View.hpp>
 #include <BitmapDatabase.hpp>
@@ -23,6 +24,7 @@ static const int16_t LBL_CY   = 239;   /* centro vertical dos rotulos      */
 static const int16_t LBL_CX   = 372;   /* rotulo do carrossel              */
 static const int16_t LBL_MENU = 236;   /* titulo do menu aberto            */
 static const int16_t MSG_CX   = 418;
+static const int16_t HINT_CX  = 400; /* Logical vertical position after Portrait rotation. */
 
 /* rotulos: id, largura, altura (as imagens estao giradas, entao a largura
    do PNG e a altura do texto)                                             */
@@ -54,15 +56,16 @@ static const uint16_t ICON_ID[5][3] = {
    settings/ mistura sequencias (glow, row, rowf, val).                  */
 static const int SCREEN_SETTINGS = 0;     /* indice do item no carrossel  */
 
-static const uint16_t SET_ROW_ID[SL_ROWS] = {
-    BITMAP_ROW_0_ID, BITMAP_ROW_1_ID, BITMAP_ROW_2_ID, BITMAP_ROW_3_ID
-};
-static const uint16_t SET_ROWF_ID[SL_ROWS] = {
-    BITMAP_ROWF_0_ID, BITMAP_ROWF_1_ID, BITMAP_ROWF_2_ID, BITMAP_ROWF_3_ID
-};
-static const uint16_t SET_GLOW_ID[SL_ROWS] = {
-    BITMAP_GLOW_0_ID, BITMAP_GLOW_1_ID, BITMAP_GLOW_2_ID, BITMAP_GLOW_3_ID
-};
+static_assert(SL_ROWS == 4, "Settings style assets must match the menu rows");
+
+static void setSettingsSprite(touchgfx::PixelDataWidget& widget,
+                              const SettingsStyleSprite& sprite)
+{
+    widget.setBitmapFormat(Bitmap::ARGB8888);
+    widget.setPixelData(reinterpret_cast<uint8_t*>(const_cast<uint32_t*>(sprite.pixels)));
+    widget.setWidth(sprite.width);
+    widget.setHeight(sprite.height);
+}
 
 static const int SET_ROW_SOUND = 3;       /* linha que mostra o volume    */
 static const uint8_t VOLUME_MAX = 10;
@@ -74,8 +77,8 @@ static const char* const SET_DEMO_TEXT[SET_ROW_SOUND] = {
 };
 
 /* Fixed 14 px gesture hints; the dynamic value atlas uses 18 px glyphs. */
-static const char* const HINT_LIST = "RIGHT SELECT  LEFT BACK";
-static const char* const HINT_EDIT = "UP/DOWN CHANGE  LEFT DONE";
+static const char* const HINT_LIST = "RIGHT SELECT\nHOLD CLOSE TO GO BACK";
+static const char* const HINT_EDIT = "UP/DOWN CHANGE\nHOLD CLOSE TO GO BACK";
 
 static int16_t roundi(float v)
 {
@@ -153,6 +156,7 @@ void Screen1View::setupScreen()
     setupSettings();
     // The existing perimeter rim remains above the calendar content.
     insert(&battFrame, calendar);
+    insert(&battFrame, tasks);
 
     applyStatus();
     heroHomeX = hero.getX();
@@ -169,14 +173,18 @@ void Screen1View::setupScreen()
         startupText[i].setPixelData(reinterpret_cast<uint8_t*>(const_cast<uint32_t*>(sprite.pixels)));
         startupText[i].setPosition(textY[i] - sprite.width / 2,
                                   (480 - sprite.height) / 2, sprite.width, sprite.height);
+        // Revealed by tickStartup() only after the Hero reaches the center.
+        startupText[i].setAlpha(0);
+        startupText[i].setVisible(false);
         add(startupText[i]);
     }
+    startupSparkTicks = 0;
     divLine.setXY(370 - divLine.getWidth() / 2, (480 - divLine.getHeight()) / 2);
     divSpark.setXY(370 - divSpark.getWidth() / 2, (480 - divSpark.getHeight()) / 2);
-    divLine.setAlpha(255);
-    divSpark.setAlpha(255);
-    divLine.setVisible(true);
-    divSpark.setVisible(true);
+    divLine.setAlpha(0);
+    divSpark.setAlpha(0);
+    divLine.setVisible(false);
+    divSpark.setVisible(false);
     // Assets are rotated: physical bottom is framebuffer +X.
     hero.setXY(480, (480 - hero.getHeight()) / 2);
     hero.setAlpha(255);
@@ -188,16 +196,19 @@ void Screen1View::setupSettings()
        subtitulo < icones/titulo. insert() encadeado mantem essa ordem
        sem mexer no Designer.                                          */
     Drawable* prev = &hero;
-    setGlow.setBitmap(Bitmap(SET_GLOW_ID[0]));
+    setSettingsSprite(setGlow, settingsStyleGlow);
     insert(prev, setGlow);
     prev = &setGlow;
     for (int i = 0; i < SL_ROWS; i++)
     {
-        setRow[i].setBitmap(Bitmap(SET_ROW_ID[i]));
-        lastRowId[i] = SET_ROW_ID[i];
+        setSettingsSprite(setRow[i], settingsStyleRows[i][0]);
+        lastRowId[i] = 0;
         insert(prev, setRow[i]);
         prev = &setRow[i];
     }
+    setSettingsSprite(setFocusFrame, settingsStyleFocusFrame);
+    insert(prev, setFocusFrame);
+    prev = &setFocusFrame;
     for (int i = 0; i < SL_ROWS; i++)
     {
         insert(prev, setVal[i]);
@@ -215,7 +226,7 @@ void Screen1View::setupSettings()
     /* a dica fica no fim da pilha, junto do msgState que ela substitui */
     add(setHint);
 
-    Drawable* all[] = { &setGlow, &setSub, &setHint };
+    Drawable* all[] = { &setGlow, &setFocusFrame, &setSub, &setHint };
     for (Drawable* d : all) d->setVisible(false);
     for (int i = 0; i < SL_ROWS; i++)
     {
@@ -244,36 +255,46 @@ void Screen1View::applySettings()
         const SettingsRect& r = SL_ROW[i];
 
         setRow[i].invalidate();
-        const uint16_t id = (i == focus) ? SET_ROWF_ID[i] : SET_ROW_ID[i];
+        const uint16_t id = (i == focus) ? 1U : 0U;
         if (id != lastRowId[i])
         {
             lastRowId[i] = id;
-            setRow[i].setBitmap(Bitmap(id));
+            setSettingsSprite(setRow[i], settingsStyleRows[i][id]);
         }
         setRow[i].setXY((int16_t)(r.x + dx), (int16_t)(r.y + dy));
         setRow[i].setAlpha(a);
         setRow[i].setVisible(a > 0);
         setRow[i].invalidate();
 
-        /* valor alinhado a direita no logico = topo fixo no fb */
+        /* Values sit below the title, left-aligned at logical x=108.
+           Logical (x,y) -> framebuffer (y,479-x), with sprite extents. */
         setVal[i].invalidate();
-        setVal[i].setXY((int16_t)(r.x + dx + r.w / 2 - setVal[i].getWidth() / 2),
-                        (int16_t)(SL_VALUE_END_FB_Y + dy));
+        setVal[i].setXY((int16_t)(r.x + dx + 29),
+                        (int16_t)(480 - 106 - setVal[i].getHeight() + dy));
         setVal[i].setAlpha(settings.getValueAlpha(i));
         setVal[i].setVisible(a > 0);
         setVal[i].invalidate();
     }
 
+    setFocusFrame.invalidate();
+    if (focus >= 0 && focus < SL_ROWS)
+    {
+        const SettingsRect& r=SL_ROW[focus];
+        setFocusFrame.setXY(r.x+fdx,r.y-settings.getRowSlide(focus)+fdy);
+        const uint8_t alpha=(uint8_t)((settings.getGlowAlpha()*settings.getRowAlpha(focus))/255);
+        setFocusFrame.setAlpha(alpha);
+        setFocusFrame.setVisible(alpha>0);
+    }
+    else setFocusFrame.setVisible(false);
+    setFocusFrame.invalidate();
     setGlow.invalidate();
     if (focus >= 0)
     {
         /* o halo acompanha a posicao continua da lista (como o angulo
            do carrossel); as linhas tem o mesmo passo, posicao linear  */
-        const SettingsRect& g = SL_GLOW[focus];
         const float row = settings.getGlowRow();
-        setGlow.setBitmap(Bitmap(SET_GLOW_ID[focus]));
-        setGlow.setXY((int16_t)(SL_GLOW[0].x + roundi(row * SL_ROW_PITCH) + fdx),
-                      (int16_t)(g.y - settings.getRowSlide(focus) + fdy));
+        setGlow.setXY((int16_t)(SL_ROW[0].x + 5 + roundi(row * SL_ROW_PITCH) + fdx),
+                      (int16_t)(480 - 86 - 22 - settings.getRowSlide(focus) + fdy));
         const uint8_t a = (uint8_t)((settings.getGlowAlpha()
                                      * settings.getRowAlpha(focus)) / 255);
         setGlow.setAlpha(a);
@@ -303,7 +324,7 @@ void Screen1View::applySettings()
         setHint.setWidth(sprite.width);
         setHint.setHeight(sprite.height);
     }
-    setHint.setXY(MSG_CX - setHint.getWidth() / 2, (int16_t)((480 - setHint.getHeight()) / 2));
+    setHint.setXY(414 - setHint.getWidth() / 2, (int16_t)((480 - setHint.getHeight()) / 2));
     const uint8_t ha = (uint8_t)((settings.getRowAlpha(SL_ROWS - 1) * 170) / 255);
     setHint.setAlpha(ha);
     setHint.setVisible(ha > 0);
@@ -340,7 +361,7 @@ void Screen1View::setSettingText(uint8_t item, const char* text)
 {
     if (item >= SET_ROW_SOUND) return;
     setVal[item].invalidate();
-    setVal[item].setText(text, SL_VALUE_MAX_W[item]);
+    setVal[item].setText(text, 180);
     setVal[item].invalidate();
 }
 
@@ -356,14 +377,14 @@ void Screen1View::setVolume(uint8_t volume)
     text[n++] = '0';
     text[n] = '\0';
     setVal[SET_ROW_SOUND].invalidate();
-    setVal[SET_ROW_SOUND].setText(text, SL_VALUE_MAX_W[SET_ROW_SOUND]);
+    setVal[SET_ROW_SOUND].setText(text, 180);
     setVal[SET_ROW_SOUND].invalidate();
 }
 
 void Screen1View::setHomeVisible(bool visible)
 {
     Drawable* widgets[] = {
-        &board, &field, &icon0, &icon1, &icon2, &icon3, &icon4,
+        &icon0, &icon1, &icon2, &icon3, &icon4,
         &selRing, &lblOption, &divLine, &divSpark, &msgState,
         &logoStatus, &wifiIcon, &battFill, &battFrame, &sbReady, &sbWave
     };
@@ -374,56 +395,105 @@ void Screen1View::setHomeVisible(bool visible)
     invalidate();
 }
 
+/* Startup reveal, in ticks after the Hero reaches the center (Wait stage):
+   texts fade in first, then the divider line and its spark, which only
+   starts sliding once it begins to appear.                              */
+static const uint16_t STARTUP_TEXT_FADE  = 30;
+static const uint16_t STARTUP_LINE_DELAY = STARTUP_TEXT_FADE;
+static const uint16_t STARTUP_LINE_FADE  = 24;
+static const uint16_t STARTUP_MIN_HOLD   = STARTUP_LINE_DELAY + STARTUP_LINE_FADE + 21;
+static const uint16_t STARTUP_DOCK_TICKS = 36;
+
+static uint8_t startupFade(uint16_t ticks, uint16_t delay, uint16_t duration)
+{
+    if (ticks <= delay) return 0;
+    if (ticks >= delay + duration) return 255;
+    const float t = (float)(ticks - delay) / duration;
+    return (uint8_t)(255.0f * t * t * (3.0f - 2.0f * t) + 0.5f);
+}
+
+/* Hidden at alpha 0 so fully transparent widgets cost no rendering.
+   Invalidated before and after: an invisible drawable ignores invalidate(). */
+template <class W>
+static void setStartupAlpha(W& w, uint8_t alpha)
+{
+    if (w.getAlpha() == alpha && w.isVisible() == (alpha > 0)) return;
+    w.invalidate();
+    w.setAlpha(alpha);
+    w.setVisible(alpha > 0);
+    w.invalidate();
+}
+
 bool Screen1View::tickStartup()
 {
     if (startupStage == StartupStage::Done) return false;
-    // Independent wrapping phase keeps animating during an indefinite sensor wait.
-    startupAnimationTicks = (startupAnimationTicks + 1) % 360;
-    const uint8_t alpha = startupStage == StartupStage::Dock
-        ? (uint8_t)(255U * (36U - startupTicks) / 36U) : 255;
-    if (startupAnimationTicks % 45 == 0)
+    // Keep circuit particles following their routes throughout loading.
+    field.tick(0.0f, 0.0f);
+    uint8_t textAlpha = 0;
+    uint8_t lineAlpha = 0;
+    if (startupStage == StartupStage::Wait)
     {
-        startupText[0].invalidate();
-        startupText[0].setPixelData(reinterpret_cast<uint8_t*>(const_cast<uint32_t*>(
-            startupSprites[(startupAnimationTicks / 45) % 4].pixels)));
-        startupText[0].invalidate();
+        textAlpha = startupFade(startupTicks, 0, STARTUP_TEXT_FADE);
+        lineAlpha = startupFade(startupTicks, STARTUP_LINE_DELAY, STARTUP_LINE_FADE);
+    }
+    else if (startupStage == StartupStage::Dock)
+    {
+        textAlpha = (uint8_t)(255U * (STARTUP_DOCK_TICKS - startupTicks) / STARTUP_DOCK_TICKS);
+        lineAlpha = textAlpha;
+    }
+
+    // Text sprite cycling only runs once the texts are on screen.
+    if (startupStage != StartupStage::Rise)
+    {
+        // Independent wrapping phase keeps animating during an indefinite sensor wait.
+        startupAnimationTicks = (startupAnimationTicks + 1) % 360;
+        if (startupAnimationTicks % 45 == 0)
+        {
+            startupText[0].invalidate();
+            startupText[0].setPixelData(reinterpret_cast<uint8_t*>(const_cast<uint32_t*>(
+                startupSprites[(startupAnimationTicks / 45) % 4].pixels)));
+            startupText[0].invalidate();
+        }
     }
     for (int i = 0; i < 3; ++i)
     {
-        if (startupText[i].getAlpha() != alpha)
-        {
-            startupText[i].setAlpha(alpha);
-            startupText[i].invalidate();
-        }
+        setStartupAlpha(startupText[i], textAlpha);
     }
-    divSpark.invalidate();
-    const int16_t lightX = (int16_t)(240 + 110 * sinf(startupAnimationTicks * 6.2831853f / 360));
-    divSpark.setY(480 - lightX - divSpark.getHeight() / 2);
-    divSpark.setAlpha(alpha);
-    divSpark.invalidate();
-    if (divLine.getAlpha() != alpha) { divLine.setAlpha(alpha); divLine.invalidate(); }
+
+    // The spark starts at the line center and slides only once the line shows.
+    if (lineAlpha > 0)
+    {
+        startupSparkTicks = (startupSparkTicks + 1) % 360;
+        divSpark.invalidate();
+        const int16_t lightX = (int16_t)(240 + 110 * sinf(startupSparkTicks * 6.2831853f / 360));
+        divSpark.setY(480 - lightX - divSpark.getHeight() / 2);
+        divSpark.invalidate();
+    }
+    setStartupAlpha(divSpark, lineAlpha);
+    setStartupAlpha(divLine, lineAlpha);
     // Discard gestures collected during bring-up, including proximity clicks.
     handPresent = false;
     previousHandPresent = false;
     handClickPending = false;
+    handBackPending = false;
     const int16_t centerX = (480 - hero.getWidth()) / 2;
     const int16_t centerY = (480 - hero.getHeight()) / 2;
     ++startupTicks;
     if (startupStage == StartupStage::Wait)
     {
         // Minimum centered hold; on hardware also wait for successful ToF frames.
-        if (startupTicks >= 45 && presenter->startupReady())
+        if (startupTicks >= STARTUP_MIN_HOLD && presenter->startupReady())
         {
             startupStage = StartupStage::Dock;
             startupTicks = 0;
         }
-        else if (startupTicks >= 45)
+        else if (startupTicks >= STARTUP_MIN_HOLD)
         {
-            startupTicks = 45; // Indefinite sensor wait without counter overflow.
+            startupTicks = STARTUP_MIN_HOLD; // Indefinite sensor wait without counter overflow.
         }
         return true;
     }
-    const uint16_t duration = (startupStage == StartupStage::Rise) ? 45 : 36;
+    const uint16_t duration = (startupStage == StartupStage::Rise) ? 45 : STARTUP_DOCK_TICKS;
     const float t = (float)startupTicks / duration;
     const float ease = t * t * (3.0f - 2.0f * t);
     const int16_t fromX = (startupStage == StartupStage::Rise) ? 480 : centerX;
@@ -515,17 +585,41 @@ void Screen1View::handleTickEvent()
     const int previousItem = menu.getSelected();
     const bool wasSettings = (previousScreen == SCREEN_SETTINGS);
     const bool wasCalendar = (previousScreen == 3);
-    const bool click = handClickPending;
+    const bool wasTasks = (previousScreen == 1 || previousScreen == 2);
+    #if !defined(STM32H743xx)
+    if (handNear && ++simulatorNearTicks == 120) handBackPending = true;
+    #endif
+    const bool back = handBackPending;
+    handBackPending = false;
+    const bool click = handClickPending && !back;
     handClickPending = false;
 
     /* Dentro do Settings os gestos sao dele: o eixo vertical move o foco
        (sem "puxar para baixo = voltar") e o clique confirma a linha.  */
-    menu.setVerticalBack(!wasSettings && !wasCalendar);
-    menu.tick(handPresent, handX, handY, (wasSettings || wasCalendar) ? false : click);
+    menu.setVerticalBack(false);
+    if (back && previousScreen >= 0) menu.close();
+    const bool navigating = handPresent && !handNear && !back && !click;
+    /* Proximity pauses navigation while retaining real hand visibility. */
+    menu.tick(handPresent || click, click ? 0 : handX, click ? 0 : handY,
+              previousScreen < 0 ? click : false, handNear || back);
+    if (menu.getScreen() == 1 || menu.getScreen() == 2)
+    {
+        if (!wasTasks || previousScreen!=menu.getScreen()) tasks.enter(menu.getScreen()==2);
+        else if (tasks.tick(navigating, handX, handY, click)) menu.close();
+        const bool taskChanged = tasks.takeChanged();
+        if (tasks.takeCompleted()) presenter->playMenuSound(MenuSound::TaskComplete);
+        else if (tasks.takeReopened()) presenter->playMenuSound(MenuSound::TaskReopen);
+        else if (taskChanged) presenter->playMenuSound(MenuSound::Tick);
+    }
+    if (tasks.isVisible() && menu.getScreen() != 1 && menu.getScreen() != 2)
+    {
+        tasks.setVisible(false);
+        invalidate();
+    }
     if (menu.getScreen() == 3)
     {
         if (!wasCalendar) calendar.enter();
-        else if (calendar.tick(handPresent, handX, handY)) menu.close();
+        else if (calendar.tick(navigating, handX, handY)) menu.close();
         // Month change uses the same feedback as moving between options.
         if (calendar.takeMonthChanged()) presenter->playMenuSound(MenuSound::Tick);
     }
@@ -535,7 +629,7 @@ void Screen1View::handleTickEvent()
         invalidate();
     }
     const bool openNow = (menu.getScreen() == SCREEN_SETTINGS);
-    settings.tick(openNow, handPresent, handX, handY,
+    settings.tick(openNow, navigating || click, click ? 0 : handX, click ? 0 : handY,
                   openNow && wasSettings && click);
     if (settings.takeExit())
     {
@@ -543,41 +637,60 @@ void Screen1View::handleTickEvent()
     }
     handleSettingsEvents();
     const bool inSettings = (menu.getScreen() == SCREEN_SETTINGS);
-    /* LED breath hue: Settings uses the emerald focus colour of its rows
-       (gen_settings.py C_FOCUS 40,220,150, scaled to full brightness). */
-    if (inSettings) presenter->setLEDBreathColor(46, 255, 174);
-    else presenter->setLEDBreathColor(0, 255, 255);
+    const bool inChat = (menu.getScreen() == 4);
+    if (!inChat || previousScreen != 4) chatHeaderTicks = 0;
+    else if (chatHeaderTicks < 14) ++chatHeaderTicks;
+    presenter->setLEDBreathColor(0, 255, 255);
 
     const MenuSound sound = menuSoundForTransition(previousScreen, previousItem,
         menu.getScreen(), menu.getSelected(), previousHandPresent, handPresent);
     previousHandPresent = handPresent;
     if (sound != MenuSound::None)
         presenter->playMenuSound(sound);
+    if (menu.getScreen() != SCREEN_SETTINGS)
+    {
+        setHint.invalidate();
+        setHint.setVisible(false);
+    }
     applySettings();
     updateRim();
 
     const bool inCalendar = (menu.getScreen() == 3);
-    if (inCalendar != wasCalendar)
+    const bool inTasks = (menu.getScreen() == 1 || menu.getScreen() == 2);
+    if ((inCalendar || inTasks) != (wasCalendar || wasTasks))
     {
         Drawable* home[] = { &hero, &icon0, &icon1, &icon2,
             &icon3, &icon4, &selRing, &lblOption, &divLine, &divSpark, &msgState,
             &sbReady, &sbWave };
         // Keep the shared live status header visible while viewing the calendar.
-        for (Drawable* widget : home) widget->setVisible(!inCalendar);
-        board.setAlpha(inCalendar ? 102 : 255); // 40%, independent of backlight.
+        for (Drawable* widget : home) widget->setVisible(!inCalendar && !inTasks);
+        // Tasks reuses the carousel label, animated into its header.
+        lblOption.setVisible(!inCalendar);
+        board.setAlpha((inCalendar || inTasks) ? 102 : 255);
         /* The hidden Hero keeps animating: its frames drive the LED breath. */
-        if (inCalendar) divSpark.stopAnimation();
+        if (inCalendar || inTasks) divSpark.stopAnimation();
         else divSpark.startAnimation(false, false, true);
         invalidate();
     }
-    if (inCalendar)
+    if (inCalendar || inTasks)
     {
         fieldLevel = 0.4f;
         field.setMasterAlpha(102);
         // Continue the existing particles along circuit routes behind the text.
         field.tick(0.0f, -menu.getAngle() * 0.45f * 57.2958f);
         presenter->setCarouselLED(menu.getAngle(), 0U);
-        lastScreen = 3;
+        if (inTasks)
+        {
+            lblOption.invalidate();
+            lblOption.setBitmap(Bitmap(LBL_ID[menu.getScreen()]));
+            const float t = tasks.headerProgress();
+            const int16_t titleX = (int16_t)(LBL_CX + (74 - LBL_CX) * t);
+            lblOption.setXY((int16_t)(titleX - lblOption.getWidth() / 2),
+                            (int16_t)(LBL_CY - lblOption.getHeight() / 2));
+            lblOption.setAlpha(255);
+            lblOption.invalidate();
+        }
+        lastScreen = menu.getScreen();
         return;
     }
 
@@ -680,6 +793,12 @@ void Screen1View::handleTickEvent()
             lx = (int16_t)(LBL_MENU + (SL_TITLE_CX_FB - LBL_MENU)
                                       * settings.getHeaderProgress());
         }
+        else if (inChat)
+        {
+            float t = chatHeaderTicks / 14.0f;
+            t = t * t * (3.0f - 2.0f * t);
+            lx = (int16_t)(LBL_CX + (74 - LBL_CX) * t);
+        }
         lblOption.setXY((int16_t)(lx - lblOption.getWidth() / 2),
                         (int16_t)(LBL_CY - lblOption.getHeight() / 2));
         lblOption.setAlpha(a);
@@ -700,7 +819,21 @@ void Screen1View::handleTickEvent()
             msgState.setXY((int16_t)(MSG_CX - msgState.getWidth() / 2),
                            (int16_t)(LBL_CY - msgState.getHeight() / 2));
             /* no Settings a dica de gesto (setHint) ocupa este lugar */
-            msgState.setAlpha(inSettings ? 0 : 160);
+            msgState.setAlpha(0);
+            if (!inSettings && !inCalendar && !inTasks)
+            {
+                const TypographyHint& sprite = typographyHints[2];
+                hintText = nullptr;
+                setHint.setBitmapFormat(Bitmap::ARGB8888);
+                setHint.setPixelData(reinterpret_cast<uint8_t*>(const_cast<uint32_t*>(sprite.pixels)));
+                setHint.setWidth(sprite.width);
+                setHint.setHeight(sprite.height);
+                setHint.setXY((inChat ? 430 : HINT_CX) - sprite.width / 2,
+                              (480 - sprite.height) / 2);
+                setHint.setAlpha(160);
+                setHint.setVisible(true);
+                setHint.invalidate();
+            }
         }
         msgState.invalidate();
     }
@@ -725,8 +858,8 @@ void Screen1View::handleTickEvent()
 
     /* Keep the divider visible; move it aside while interacting with the UI. */
     {
-        const int16_t lineX = (handPresent || inMenu) ? 394 : 314;
-        const int16_t sparkX = (handPresent || inMenu) ? 385 : 305;
+        const int16_t lineX = (inSettings || inChat) ? 374 : ((handPresent || inMenu) ? 394 : 314);
+        const int16_t sparkX = (inSettings || inChat) ? 365 : ((handPresent || inMenu) ? 385 : 305);
         if (divLine.getX() != lineX || divSpark.getX() != sparkX)
         {
             divLine.invalidate();
@@ -773,6 +906,17 @@ void Screen1View::updateRim()
 void Screen1View::handleClickEvent(const touchgfx::ClickEvent& evt)
 {
     bool down = (evt.getType() == touchgfx::ClickEvent::PRESSED);
+#if !defined(STM32H743xx)
+    // In a submenu, press simulates <30 mm; release before 2 s is a click.
+    if (menu.getScreen() >= 0 || handNear)
+    {
+        setHand(down, 0.0f, 0.0f);
+        if (!down && handNear && simulatorNearTicks < 120) handClickPending = true;
+        if (down) simulatorNearTicks = 0;
+        handNear = down;
+        return;
+    }
+#endif
     /* o display esta girado: o X da tela corresponde ao Y da cena.
        Mesma convencao do ToF (APP_HandTracking_ReadPointer): positivo =
        direita / CIMA. X do framebuffer cresce para BAIXO fisico, dai o
@@ -784,6 +928,8 @@ void Screen1View::handleClickEvent(const touchgfx::ClickEvent& evt)
 
 void Screen1View::handleDragEvent(const touchgfx::DragEvent& evt)
 {
+    handNear = false;
+    simulatorNearTicks = 120;
     setHand(true,
             (240 - evt.getNewY()) / 240.0f,
             (240 - evt.getNewX()) / 240.0f);

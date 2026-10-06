@@ -26,7 +26,7 @@ typedef enum {
 #define APP_UI_SETTING_TEXT_SIZE 33U
 
 /* Any task context, nonblocking. The GUI picks the change up on its next
-   tick. Text is shown in upper case; unsupported characters show as '?'. */
+   tick. ASCII case is preserved; unsupported characters show as '?'. */
 void APP_UISettings_SetText(APP_UISetting_t item, const char *text);
 
 /* GUI task. Copies the text only if it changed since *version (start with

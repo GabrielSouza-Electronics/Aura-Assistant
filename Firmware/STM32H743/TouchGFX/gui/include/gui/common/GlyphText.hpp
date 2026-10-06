@@ -4,7 +4,7 @@
 #include <touchgfx/widgets/Widget.hpp>
 
 /*
- * Texto dinamico desenhado com o atlas de glifos (SettingsGlyphs.hpp).
+ * Texto dinamico desenhado com os sprites de SettingsStyleAssets.hpp.
  *
  * Existe porque TextArea nao acompanha o Layout Rotation das imagens: o
  * texto sairia de lado. Aqui cada caractere e um sprite ja girado, e o
@@ -15,7 +15,7 @@
  * logica do texto; o topo do widget (y) e a borda DIREITA logica. Por isso
  * alinhar a direita = fixar o y do widget.
  *
- * O texto e convertido para maiusculas; caracteres fora do atlas viram '?'.
+ * Preserva maiusculas/minusculas ASCII; caracteres fora do atlas viram '?'.
  * Se nao couber em maxW (px logicos) e cortado com "..".
  */
 #define GT_MAX_CHARS 24

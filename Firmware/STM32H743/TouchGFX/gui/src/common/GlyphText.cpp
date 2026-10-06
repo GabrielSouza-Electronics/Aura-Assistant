@@ -1,26 +1,18 @@
 #include <gui/common/GlyphText.hpp>
-#include <gui/common/SettingsGlyphs.hpp>
+#include "SettingsStyleAssets.hpp"
+#include <touchgfx/widgets/PixelDataWidget.hpp>
 #include <touchgfx/hal/HAL.hpp>
 #include <touchgfx/Bitmap.hpp>
 
 using namespace touchgfx;
 
-static const int GLYPH_COUNT = (int)(sizeof(SG_GLYPHS) / sizeof(SG_GLYPHS[0]));
 static const uint8_t SPACE = 0xFF;
 
 static uint8_t findGlyph(char c)
 {
-    if (c >= 'a' && c <= 'z') c = (char)(c - 'a' + 'A');
     if (c == ' ') return SPACE;
-    for (int i = 0; i < GLYPH_COUNT; i++)
-    {
-        if (SG_GLYPHS[i].c == c) return (uint8_t)i;
-    }
-    for (int i = 0; i < GLYPH_COUNT; i++)
-    {
-        if (SG_GLYPHS[i].c == '?') return (uint8_t)i;
-    }
-    return SPACE;
+    const unsigned char code = static_cast<unsigned char>(c);
+    return (code >= 33 && code <= 126) ? (uint8_t)(code - 33) : (uint8_t)('?' - 33);
 }
 
 GlyphText::GlyphText()
@@ -40,18 +32,18 @@ int GlyphText::layout(const char* text, int n, bool dots, int16_t maxW)
         const uint8_t g = findGlyph(i < n ? text[i] : '.');
         if (g == SPACE)
         {
-            x16 += SG_SPACE_ADV16;
+            x16 += SETTINGS_STYLE_SPACE16;
             continue;
         }
         const int16_t p = (int16_t)((x16 + 8) >> 4);
         glyph[count] = g;
         pos[count] = p;
         count++;
-        const int16_t end = (int16_t)(p + SG_GLYPHS[g].cellW);
+        const int16_t end = (int16_t)(p + settingsStyleGlyphs[g].height);
         if (end > extent) extent = end;
-        x16 += SG_GLYPHS[g].adv16;
+        x16 += settingsStyleGlyphs[g].advance16;
     }
-    return (extent <= maxW + 2 * SG_CELL_PAD) ? 1 : 0;
+    return (extent <= maxW + 4) ? 1 : 0;
 }
 
 void GlyphText::setText(const char* text, int16_t maxW)
@@ -69,7 +61,7 @@ void GlyphText::setText(const char* text, int16_t maxW)
             if (layout(text, n, true, maxW)) break;
         }
     }
-    setWidthHeight(SG_TEXT_H, extent);
+    setWidthHeight(settingsStyleGlyphs[0].width, extent);
 }
 
 void GlyphText::draw(const Rect& invalidatedArea) const
@@ -77,14 +69,20 @@ void GlyphText::draw(const Rect& invalidatedArea) const
     if (alpha == 0) return;
     for (int i = 0; i < count; i++)
     {
-        const SettingsGlyph& g = SG_GLYPHS[glyph[i]];
+        const SettingsStyleSprite& g = settingsStyleGlyphs[glyph[i]];
         /* x logico cresce -> y do framebuffer decresce */
-        Rect r(0, (int16_t)(extent - (pos[i] + g.cellW)), SG_TEXT_H, g.cellW);
+        const int16_t localY = (int16_t)(extent - (pos[i] + g.height));
+        Rect r(0, localY, g.width, g.height);
         Rect dirty = r & invalidatedArea;
         if (dirty.isEmpty()) continue;
-        dirty.x = (int16_t)(dirty.x - r.x);
-        dirty.y = (int16_t)(dirty.y - r.y);
         translateRectToAbsolute(r);
-        HAL::lcd().drawPartialBitmap(Bitmap(g.id), r.x, r.y, dirty, alpha, true);
+        PixelDataWidget sprite;
+        sprite.setBitmapFormat(Bitmap::ARGB8888);
+        sprite.setPixelData(reinterpret_cast<uint8_t*>(const_cast<uint32_t*>(g.pixels)));
+        sprite.setPosition(r.x, r.y, g.width, g.height);
+        sprite.setAlpha(alpha);
+        // draw() takes widget-local coordinates, even for this temporary sprite.
+        dirty.y = (int16_t)(dirty.y - localY);
+        sprite.draw(dirty);
     }
 }

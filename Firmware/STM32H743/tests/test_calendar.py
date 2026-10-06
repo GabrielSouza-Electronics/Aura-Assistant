@@ -23,6 +23,8 @@ with tempfile.TemporaryDirectory(prefix='aura_calendar_', ignore_cleanup_errors=
     tmp = Path(directory)
     dll = tmp/'calendar.dll'
     subprocess.run([args.cc,'-std=c11','-Wall','-Wextra','-Werror','-shared',
+                    '-I'+str(root/'Components/Tasks'),
+                    '-I'+str(root/'Components/Calendar'),
                     str(root/'Components/Calendar/calendar_data.c'),'-o',str(dll)],check=True)
     lib = C.CDLL(str(dll))
     lib.Cal_Days.argtypes = [C.c_uint,C.c_uint]
@@ -112,7 +114,7 @@ with tempfile.TemporaryDirectory(prefix='aura_calendar_', ignore_cleanup_errors=
     subprocess.run([str(exe)],check=True)
     exe=tmp/'service.exe'
     subprocess.run([args.cc,'-std=c11','-Wall','-Wextra','-Werror',
-                    *['-I'+str(root/p) for p in ('tests/calendar_fakes','App/Inc','App/Src','Components/Calendar')],
+                    *['-I'+str(root/p) for p in ('tests/calendar_fakes','App/Inc','App/Src','Components/Calendar','Components/Tasks')],
                     str(root/'tests/host/test_calendar_service.c'),str(root/'Components/Calendar/calendar_data.c'),
                     '-o',str(exe)],check=True)
     subprocess.run([str(exe)],check=True)

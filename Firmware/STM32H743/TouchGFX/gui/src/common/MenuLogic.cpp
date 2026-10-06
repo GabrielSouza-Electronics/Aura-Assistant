@@ -18,7 +18,7 @@ static const float RING_TILT = 46.0f;
 /* --- interacao --------------------------------------------------------- */
 /* SPIN_GAIN, HYST, CENTER_*, ACT_* vem de HandInput.hpp (compartilhados
    com o Settings).                                                       */
-static const int   DWELL_N   = 72;        /* 1,2 s a 60 Hz                 */
+static const int   DWELL_N   = 48;        /* 0,8 s a 60 Hz; 1,5x faster    */
 static const float ACT_DOWN  = -ACT_THRESHOLD;
 static const float VIS_K     = 0.10f;
 static const float TILT_MAX  = 26.0f;
@@ -80,7 +80,8 @@ void MenuLogic::back()
     }
 }
 
-void MenuLogic::tick(bool handPresent, float handX, float handY, bool click)
+void MenuLogic::tick(bool handPresent, float handX, float handY, bool click,
+                     bool proximity)
 {
     vis += ((handPresent ? 1.0f : 0.0f) - vis) * VIS_K;
 
@@ -98,8 +99,8 @@ void MenuLogic::tick(bool handPresent, float handX, float handY, bool click)
         msg--;
     }
 
-    const float vy = handPresent ? handY : 0.0f;
-    if (!handPresent || screen >= 0 || vy < ACT_DOWN)
+    const float vy = handPresent && !proximity ? handY : 0.0f;
+    if (!handPresent || proximity || screen >= 0 || vy < ACT_DOWN)
     {
         centering = false;
     }
@@ -114,7 +115,7 @@ void MenuLogic::tick(bool handPresent, float handX, float handY, bool click)
         spinLock = false;
     }
     /* com um menu aberto o carrossel esta escondido: nao gira por baixo */
-    const float h = (handPresent && !click && !centering && !spinLock &&
+    const float h = (handPresent && !proximity && !click && !centering && !spinLock &&
                      screen < 0) ? handX : 0.0f;
     angle += SPIN_GAIN * h;
     if (h != 0.0f)
@@ -156,7 +157,7 @@ void MenuLogic::tick(bool handPresent, float handX, float handY, bool click)
 
     /* Inputs are normalized by the source (mouse or calibrated ToF).
        Do not select by dwell while the user is requesting back/cancel. */
-    if (handPresent && centering && centered && vy >= ACT_DOWN)
+    if (handPresent && !proximity && centering && centered && vy >= ACT_DOWN)
     {
         dwell++;
     }
@@ -175,7 +176,7 @@ void MenuLogic::tick(bool handPresent, float handX, float handY, bool click)
     /* --- eixo vertical: inclinar / cancelar --- */
     tilt = vy * TILT_MAX;
 
-    if (handPresent && vy < ACT_DOWN && (verticalBack || screen < 0))
+    if (handPresent && vy < ACT_DOWN && screen < 0)
     {
         /* Leaving a submenu needs a deliberate 500 ms hold; on the carousel
            the same gesture is only a quick cancel of the dwell.        */

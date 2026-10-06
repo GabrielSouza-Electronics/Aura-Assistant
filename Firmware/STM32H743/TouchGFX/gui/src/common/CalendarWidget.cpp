@@ -172,5 +172,5 @@ void CalendarWidget::draw(const Rect& area) const
         }
     }
     sprite(status(),240,427,area);
-    sprite(CAL_HINT,240,447,area);
+    sprite(CAL_HINT,240,450,area);
 }

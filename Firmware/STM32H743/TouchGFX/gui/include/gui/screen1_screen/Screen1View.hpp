@@ -9,6 +9,7 @@
 #include <gui/common/SettingsLogic.hpp>
 #include <gui/common/GlyphText.hpp>
 #include <gui/common/CalendarWidget.hpp>
+#include <gui/common/TasksWidget.hpp>
 #include <touchgfx/widgets/Image.hpp>
 #include <touchgfx/widgets/PixelDataWidget.hpp>
 #include <touchgfx/events/ClickEvent.hpp>
@@ -37,6 +38,8 @@ public:
     }
     void setWifiLevel(int lvl);
     void requestHandClick() { handClickPending = true; }
+    void setHandNear(bool closeRange) { handNear = closeRange; }
+    void requestHandBack() { handBackPending = true; }
     void setBatteryLevel(int pct);
     void setChargerStatus(bool chg);
     /* Settings: textos livres (0 Wi-Fi, 1 Bluetooth, 2 Brightness) e
@@ -48,12 +51,14 @@ protected:
     CircuitField field;
     MenuLogic    menu;
     CalendarWidget calendar;
+    TasksWidget tasks;
 
     /* Menu Settings: widgets criados em codigo, como o field. Ficam sobre
        as particulas e sob o titulo; as caixas sao translucidas.         */
     SettingsLogic   settings;
-    touchgfx::Image setGlow;
-    touchgfx::Image setRow[SL_ROWS];
+    touchgfx::PixelDataWidget setGlow;
+    touchgfx::PixelDataWidget setFocusFrame;
+    touchgfx::PixelDataWidget setRow[SL_ROWS];
     GlyphText       setVal[SL_ROWS];
     touchgfx::PixelDataWidget       setHint;        /* dica de gesto, no lugar do msgState */
     const char*     hintText = nullptr;
@@ -64,12 +69,16 @@ protected:
 
     bool  handPresent;
     bool  handClickPending = false;
+    bool  handNear = false;
+    bool  handBackPending = false;
+    unsigned simulatorNearTicks = 0;
     bool  previousHandPresent;
     float handX, handY;
     int   wifiLevel;
     int   battLevel;
     bool  charging;
     int   lastScreen;
+    unsigned chatHeaderTicks = 0;
     uint16_t lastIconId[5];      /* evita setBitmap redundante             */
 
     void applyStatus();
@@ -81,6 +90,7 @@ protected:
     StartupStage startupStage = StartupStage::Rise;
     uint16_t startupTicks = 0;
     uint16_t startupAnimationTicks = 0;
+    uint16_t startupSparkTicks = 0;     /* spark slide phase, starts with the line */
     touchgfx::PixelDataWidget startupText[3];
     int16_t heroHomeX = 0;
     int16_t heroHomeY = 0;

@@ -34,7 +34,7 @@ int main()
     assert(nav.gesture(true,0.8f,0.9f)==0); // Vertical input cancels repeat.
     assert(nav.getDirection()==0);
     for (int i=1;i<HandInput::BACK_HOLD;i++) assert(nav.gesture(true,0,-0.9f)==0);
-    assert(nav.gesture(true,0,-0.9f)==2); // Back only after a 500 ms hold.
+    assert(nav.gesture(true,0,-0.9f)==0); // Directional input never leaves.
     nav.enter(s); assert(nav.month==12);
     s.now.month=1; s.now.year=2027; nav.synchronize(s);
     assert(nav.month==1 && nav.year==2027); // Midnight while following today.
@@ -51,5 +51,5 @@ int main()
     s.time_valid=false; nav.enter(s); nav.gesture(false,0,0);
     assert(nav.gesture(true,1,0)==0 && nav.year==0);
     for (int i=1;i<HandInput::BACK_HOLD;i++) assert(nav.gesture(true,0,-1)==0);
-    assert(nav.gesture(true,0,-1)==2); // Back also works before network sync.
+    assert(nav.gesture(true,0,-1)==0); // Back is a global proximity gesture.
 }

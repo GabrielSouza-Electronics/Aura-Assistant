@@ -410,8 +410,6 @@ void APP_SensorTask(void)
     BSP_TOF_Data_t tof_data;
     uint8_t startup_frames = 0U;
 
-    /* The IMU has no consumer yet; it stays in its power-on (power-down)
-       state until a feature needs it. */
     if (BSP_TOF_Init() != BSP_TOF_OK)
     {
         /* Without ranging the UI stays in APP_INIT_WAITING_FOR_TOF. */

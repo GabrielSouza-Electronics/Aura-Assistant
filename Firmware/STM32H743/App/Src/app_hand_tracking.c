@@ -12,8 +12,8 @@
 #define APP_HAND_TRACKING_MAX_DISTANCE_MM 1000U
 #define APP_HAND_NO_TARGET_Z_MM           1001U
 #define APP_HAND_LOST_FRAME_HOLD_COUNT    3U
-#define APP_HAND_CLICK_PRESS_MM           25U
-#define APP_HAND_CLICK_REARM_MM           35U
+#define APP_HAND_CLICK_PRESS_MM           30U
+#define APP_HAND_BACK_HOLD_MS             2000U
 /* Three periods of the current 5 Hz sensor. */
 #define APP_HAND_POINTER_TIMEOUT_MS       600U
 
@@ -40,6 +40,9 @@ static struct
     bool pressed;
     bool click_pending;
     bool click_latched;
+    bool near;
+    bool back_pending;
+    TickType_t near_tick;
 } app_hand_pointer;
 
 static void APP_HandTracking_PublishPointer(void)
@@ -50,23 +53,38 @@ static void APP_HandTracking_PublishPointer(void)
     app_hand_pointer.x = app_hand_tracking.x;
     app_hand_pointer.y = app_hand_tracking.y;
     app_hand_pointer.pressed = app_hand_tracking.hand_active && fresh;
+    if ((TickType_t)(xTaskGetTickCount() - app_hand_pointer.tick) >= pdMS_TO_TICKS(APP_HAND_POINTER_TIMEOUT_MS))
+    {
+        app_hand_pointer.near = false;
+        app_hand_pointer.click_latched = false;
+    }
     if (fresh)
     {
-        if (app_hand_tracking.raw_z_mm >= APP_HAND_CLICK_REARM_MM)
+        const bool near = app_hand_pointer.pressed &&
+                          app_hand_tracking.raw_z_mm < APP_HAND_CLICK_PRESS_MM;
+        const TickType_t now = xTaskGetTickCount();
+        if (near && !app_hand_pointer.near)
         {
-            app_hand_pointer.click_latched = false;
-        }
-        else if (app_hand_pointer.pressed &&
-                 (app_hand_tracking.raw_z_mm < APP_HAND_CLICK_PRESS_MM) &&
-                 !app_hand_pointer.click_latched)
-        {
-            app_hand_pointer.click_pending = true;
+            app_hand_pointer.near_tick = now;
             app_hand_pointer.click_latched = true;
         }
+        if (near && app_hand_pointer.click_latched &&
+            (TickType_t)(now - app_hand_pointer.near_tick) >= pdMS_TO_TICKS(APP_HAND_BACK_HOLD_MS))
+        {
+            app_hand_pointer.back_pending = true;
+            app_hand_pointer.click_latched = false;
+        }
+        if (!near && app_hand_pointer.near && app_hand_pointer.click_latched)
+            app_hand_pointer.click_pending =
+                (TickType_t)(now - app_hand_pointer.near_tick) < pdMS_TO_TICKS(APP_HAND_BACK_HOLD_MS);
+        if (!near) app_hand_pointer.click_latched = false;
+        app_hand_pointer.near = near;
     }
-    if (!app_hand_pointer.pressed)
+    else
     {
-        app_hand_pointer.click_pending = false;
+        /* Invalid frames cancel a gesture; stale depth must never close a menu. */
+        app_hand_pointer.near = false;
+        app_hand_pointer.click_latched = false;
     }
     app_hand_pointer.tick = xTaskGetTickCount();
     taskEXIT_CRITICAL();
@@ -84,10 +102,28 @@ bool APP_HandTracking_TakeClick(void)
     bool click;
 
     taskENTER_CRITICAL();
-    click = app_hand_pointer.click_pending && APP_HandTracking_PointerFresh();
+    click = app_hand_pointer.click_pending &&
+            ((TickType_t)(xTaskGetTickCount() - app_hand_pointer.tick) < pdMS_TO_TICKS(APP_HAND_POINTER_TIMEOUT_MS));
     app_hand_pointer.click_pending = false;
     taskEXIT_CRITICAL();
     return click;
+}
+
+bool APP_HandTracking_ReadNear(void)
+{
+    taskENTER_CRITICAL();
+    bool near = app_hand_pointer.near && APP_HandTracking_PointerFresh();
+    taskEXIT_CRITICAL();
+    return near;
+}
+
+bool APP_HandTracking_TakeBack(void)
+{
+    taskENTER_CRITICAL();
+    bool back = app_hand_pointer.back_pending && APP_HandTracking_PointerFresh();
+    app_hand_pointer.back_pending = false;
+    taskEXIT_CRITICAL();
+    return back;
 }
 
 bool APP_HandTracking_ReadPointer(int8_t *x, int8_t *y)
@@ -151,8 +187,16 @@ static void APP_HandTracking_ClearTarget(void)
     app_hand_tracking.valid_zone_count = 0U;
 }
 
-static void APP_HandTracking_ProcessNoTarget(void)
+static void APP_HandTracking_ProcessNoTarget(bool withdrawn)
 {
+    /* Withdrawal may leave the ranging field entirely. Emit only a short
+       release; invalid/stale data must never synthesize a long hold. */
+    taskENTER_CRITICAL();
+    if (withdrawn && app_hand_pointer.near && app_hand_pointer.click_latched &&
+        (TickType_t)(xTaskGetTickCount() - app_hand_pointer.tick) < pdMS_TO_TICKS(APP_HAND_POINTER_TIMEOUT_MS) &&
+        (TickType_t)(xTaskGetTickCount() - app_hand_pointer.near_tick) < pdMS_TO_TICKS(APP_HAND_BACK_HOLD_MS))
+        app_hand_pointer.click_pending = true;
+    taskEXIT_CRITICAL();
     /* Hold the last target for a few frames to ride over single dropouts. */
     if (app_hand_tracking.lost_frame_count < APP_HAND_LOST_FRAME_HOLD_COUNT)
     {
@@ -170,6 +214,8 @@ void APP_HandTracking_Reset(void)
     taskENTER_CRITICAL();
     app_hand_pointer.click_latched = false;
     app_hand_pointer.click_pending = false;
+    app_hand_pointer.near = false;
+    app_hand_pointer.back_pending = false;
     taskEXIT_CRITICAL();
     app_hand_tracking.lost_frame_count = APP_HAND_LOST_FRAME_HOLD_COUNT;
     APP_HandTracking_ClearTarget();
@@ -237,7 +283,10 @@ void APP_HandTracking_Process(const BSP_TOF_Data_t *tof_data)
 
     if (valid_zones == 0U)
     {
-        APP_HandTracking_ProcessNoTarget();
+        bool withdrawn = true;
+        for (uint32_t zone = 0; zone < BSP_TOF_ZONE_COUNT; ++zone)
+            if (tof_data->targets_detected[zone]) withdrawn = false;
+        APP_HandTracking_ProcessNoTarget(withdrawn);
         return;
     }
 

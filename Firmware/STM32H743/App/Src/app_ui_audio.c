@@ -7,15 +7,24 @@
 
 #define UI_AUDIO_REQUEST_FLAG (1UL << 2)
 static APP_UIAudioEvent_t pending;
+/* Preserve completion/reopen sound order while a streamed effect is playing. */
+static APP_UIAudioEvent_t taskSounds[32];
+static unsigned soundHead, soundCount;
 static osThreadId_t owner;
 
 void APP_UIAudio_Request(APP_UIAudioEvent_t event)
 {
     osThreadId_t thread;
-    if (event < APP_UI_AUDIO_TICK || event > APP_UI_AUDIO_EXIT)
+    if (event < APP_UI_AUDIO_TICK || event > APP_UI_AUDIO_TASK_REOPEN)
         return;
     taskENTER_CRITICAL();
-    pending = event;
+    if (event == APP_UI_AUDIO_TASK_COMPLETE || event == APP_UI_AUDIO_TASK_REOPEN) {
+        if (soundCount==32) { soundHead=(soundHead+1)%32; --soundCount; }
+        taskSounds[(soundHead+soundCount)%32]=event;
+        ++soundCount;
+    }
+    else
+        pending = event;
     thread = owner;
     taskEXIT_CRITICAL();
     if (thread != NULL)
@@ -31,10 +40,31 @@ void APP_UIAudio_Run(void)
     {
         APP_UIAudioEvent_t event;
         taskENTER_CRITICAL();
-        event = pending;
-        pending = APP_UI_AUDIO_NONE;
+        if (soundCount != 0U)
+        {
+            event = taskSounds[soundHead];
+            soundHead=(soundHead+1)%32;
+            --soundCount;
+            pending = APP_UI_AUDIO_NONE;
+        }
+        else
+        {
+            event = pending;
+            pending = APP_UI_AUDIO_NONE;
+        }
         taskEXIT_CRITICAL();
-        if (event != APP_UI_AUDIO_NONE)
+        if (event == APP_UI_AUDIO_TASK_COMPLETE || event == APP_UI_AUDIO_TASK_REOPEN)
+        {
+            /* Stream the full 700 ms asset through the existing DMA buffer. */
+            while (BSP_AUDIO_OUT_IsBusy())
+                (void)osDelay(1U);
+            (void)BSP_AUDIO_OUT_PlayPCM48kMonoBlocking(
+                event==APP_UI_AUDIO_TASK_COMPLETE?ui_task_complete:ui_menu_exit,
+                event==APP_UI_AUDIO_TASK_COMPLETE?UI_TASK_COMPLETE_COUNT:UI_MENU_EXIT_COUNT, 2000U);
+            /* Drain completions queued during playback before waiting again. */
+            continue;
+        }
+        else if (event != APP_UI_AUDIO_NONE)
         {
             const int16_t *pcm = ui_nav_tick;
             size_t count = UI_NAV_TICK_COUNT;

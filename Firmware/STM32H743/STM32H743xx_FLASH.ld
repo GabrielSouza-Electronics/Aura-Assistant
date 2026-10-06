@@ -256,7 +256,14 @@ SECTIONS
     . = ALIGN(8);
   } >RAM_D3
 
- 
+  /* CPU-owned Tasks snapshot, explicitly cleared before scheduler start. */
+  .tasks (NOLOAD) :
+  {
+    . = ALIGN(8);
+    *(.tasks)
+    . = ALIGN(8);
+  } >RAM_D3
+
    /* TouchGFX Framebuffer in AXI SRAM D1 */
   TouchGFX_Framebuffer (NOLOAD) :
   {

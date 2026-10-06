@@ -148,9 +148,9 @@ int main()
         run(s, 150, [](int t, bool& p, float& x, float& y) { p = true; y = 0; x = (t < 60) ? 0.8f : 0.0f; });
         Result r = run(s, 200, [](int t, bool& p, float& x, float& y) { p = true; y = 0; x = (t < 120) ? -0.8f : 0.0f; });
         CHECK(r.leaves == 1 && r.exits == 0 && !s.isEditing(), "leaves %d exits %d", r.leaves, r.exits);
-        printf("   ...volta ao centro e ESQUERDA de novo -> sai do menu\n");
+        printf("   ...volta ao centro e ESQUERDA de novo -> permanece no menu\n");
         Result r2 = run(s, 120, [](int t, bool& p, float& x, float& y) { p = true; y = 0; x = (t < 60) ? -0.8f : 0.0f; });
-        CHECK(r2.exits == 1, "exits %d", r2.exits);
+        CHECK(r2.exits == 0, "exits %d", r2.exits);
     }
 
     printf("9) mao na direita com um pouco de Y nao rola a lista\n");
@@ -168,7 +168,7 @@ int main()
         CHECK(r.plus + r.minus == 0 && s.isEditing(), "plus %d minus %d edit %d", r.plus, r.minus, s.isEditing());
     }
 
-    printf("11) fluxo completo: desce ate Sound, entra, +2, sai do ajuste, sai do menu\n");
+    printf("11) fluxo completo: desce ate Sound, entra, +2, sai do ajuste, permanece no menu\n");
     {
         SettingsLogic s; openMenu(s);
         Result r = run(s, 1400, [](int t, bool& p, float& x, float& y) {
@@ -181,7 +181,7 @@ int main()
         });
         printf("   foco %d  +%d  -%d  enters %d leaves %d exits %d\n", s.getFocus(), r.plus, r.minus, r.enters, r.leaves, r.exits);
         CHECK(s.getFocus() == SL_ROWS - 1 && r.enters == 1 && r.plus >= 1 && r.minus == 0 &&
-              r.leaves == 1 && r.exits == 1, "fluxo incorreto");
+              r.leaves == 1 && r.exits == 0, "fluxo incorreto");
     }
 
     {
@@ -201,7 +201,7 @@ int main()
         CHECK(!s.isEditing() && !s.takeExit(), "held left cannot exit twice");
         s.tick(true, true, 0, 0, false);
         for (int i=0; i<12; ++i) s.tick(true, true, -0.8f, 0, false);
-        CHECK(s.takeExit(), "rearmed left exits Settings");
+        CHECK(!s.takeExit(), "left cannot exit Settings; global ToF hold owns exit");
     }
 
     printf(fails ? "\n%d FALHA(S)\n" : "\nOK - todos os cenarios passaram\n", fails);

@@ -93,7 +93,7 @@ void SettingsLogic::action(int dir)
     }
     else
     {
-        exitReq = true;     /* o som de saida vem da MenuLogic */
+        /* Leaving the menu is exclusively the global ToF hold gesture. */
     }
 }
 

@@ -47,15 +47,21 @@ target_include_directories(TouchGFX PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/App/Inc
     ${CMAKE_CURRENT_SOURCE_DIR}/BSP/Inc
     ${CMAKE_CURRENT_SOURCE_DIR}/Components/Calendar
+    ${CMAKE_CURRENT_SOURCE_DIR}/Components/Tasks
     ${CMAKE_CURRENT_SOURCE_DIR}/aura_assets/compiled/typography
     ${CMAKE_CURRENT_SOURCE_DIR}/aura_assets/compiled/startup
     ${CMAKE_CURRENT_SOURCE_DIR}/aura_assets/compiled/calendar
+    ${CMAKE_CURRENT_SOURCE_DIR}/aura_assets/compiled/settings_style
+    ${CMAKE_CURRENT_SOURCE_DIR}/aura_assets/compiled/tasks
 )
 target_sources(TouchGFX PRIVATE
     TouchGFX/gui/src/common/CalendarWidget.cpp
     aura_assets/compiled/typography/TypographyHints.cpp
     aura_assets/compiled/startup/StartupAssets.cpp
     aura_assets/compiled/calendar/CalendarAssets.cpp
+    aura_assets/compiled/settings_style/SettingsStyleAssets.cpp
+    aura_assets/compiled/tasks/TasksAssets.cpp
+    TouchGFX/gui/src/common/TasksWidget.cpp
 )
 
 # Link directories setup
@@ -77,6 +83,9 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
 target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user defined symbols
 )
+
+option(AURA_WEB_ENABLED "Use the configured Aura web API instead of public calendar services" OFF)
+target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE APP_WEB_ENABLED=$<BOOL:${AURA_WEB_ENABLED}>)
 
 # Remove wrong libob.a library dependency when using cpp files
 list(REMOVE_ITEM CMAKE_C_IMPLICIT_LINK_LIBRARIES ob)
@@ -102,7 +111,10 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     App/Src/app_logging.c
     App/Src/app_wifi.c
     App/Src/app_calendar.c
+    App/Src/app_tasks.c
+    App/Src/app_reminders.c
     Components/Calendar/calendar_data.c
+    Components/Tasks/tasks_data.c
     App/Src/app_provisioning.c
     App/Src/provision_protocol.c
 
@@ -152,6 +164,7 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
     Components/PDM
     Components/AudioDSP
     Components/Calendar
+    Components/Tasks
 )
 
 # Produce independent programming images. Keeping QSPI out of the internal

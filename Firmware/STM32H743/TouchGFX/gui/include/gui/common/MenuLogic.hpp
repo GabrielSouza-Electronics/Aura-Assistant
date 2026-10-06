@@ -34,7 +34,8 @@ public:
     MenuLogic();
 
     /* Uma vez por tick, com o estado do ToF. */
-    void tick(bool handPresent, float handX, float handY, bool click = false);
+    void tick(bool handPresent, float handX, float handY, bool click = false,
+              bool proximity = false);
 
     /* --- estado --------------------------------------------------------- */
     int   getScreen() const { return screen; }      /* -1 = carrossel        */

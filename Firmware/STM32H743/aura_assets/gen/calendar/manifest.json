@@ -74,14 +74,14 @@
       48,
       88
     ],
-    "colors": 22
+    "colors": 19
   },
   "cal_clock_37": {
     "size": [
       48,
       88
     ],
-    "colors": 18
+    "colors": 17
   },
   "cal_clock_38": {
     "size": [
@@ -109,7 +109,7 @@
       48,
       88
     ],
-    "colors": 8
+    "colors": 7
   },
   "cal_day_normal_01": {
     "size": [
@@ -130,14 +130,14 @@
       34,
       32
     ],
-    "colors": 15
+    "colors": 17
   },
   "cal_day_normal_04": {
     "size": [
       34,
       32
     ],
-    "colors": 12
+    "colors": 16
   },
   "cal_day_normal_05": {
     "size": [
@@ -200,14 +200,14 @@
       34,
       32
     ],
-    "colors": 21
+    "colors": 16
   },
   "cal_day_normal_14": {
     "size": [
       34,
       32
     ],
-    "colors": 14
+    "colors": 16
   },
   "cal_day_normal_15": {
     "size": [
@@ -277,7 +277,7 @@
       34,
       32
     ],
-    "colors": 19
+    "colors": 18
   },
   "cal_day_normal_25": {
     "size": [
@@ -291,7 +291,7 @@
       34,
       32
     ],
-    "colors": 21
+    "colors": 20
   },
   "cal_day_normal_27": {
     "size": [
@@ -319,14 +319,14 @@
       34,
       32
     ],
-    "colors": 18
+    "colors": 19
   },
   "cal_day_normal_31": {
     "size": [
       34,
       32
     ],
-    "colors": 17
+    "colors": 15
   },
   "cal_day_weekend_01": {
     "size": [
@@ -347,14 +347,14 @@
       34,
       32
     ],
-    "colors": 22
+    "colors": 20
   },
   "cal_day_weekend_04": {
     "size": [
       34,
       32
     ],
-    "colors": 21
+    "colors": 22
   },
   "cal_day_weekend_05": {
     "size": [
@@ -417,14 +417,14 @@
       34,
       32
     ],
-    "colors": 24
+    "colors": 23
   },
   "cal_day_weekend_14": {
     "size": [
       34,
       32
     ],
-    "colors": 25
+    "colors": 29
   },
   "cal_day_weekend_15": {
     "size": [
@@ -494,7 +494,7 @@
       34,
       32
     ],
-    "colors": 26
+    "colors": 27
   },
   "cal_day_weekend_25": {
     "size": [
@@ -543,7 +543,7 @@
       34,
       32
     ],
-    "colors": 25
+    "colors": 26
   },
   "cal_day_muted_01": {
     "size": [
@@ -564,14 +564,14 @@
       34,
       32
     ],
-    "colors": 26
+    "colors": 25
   },
   "cal_day_muted_04": {
     "size": [
       34,
       32
     ],
-    "colors": 25
+    "colors": 26
   },
   "cal_day_muted_05": {
     "size": [
@@ -634,14 +634,14 @@
       34,
       32
     ],
-    "colors": 34
+    "colors": 29
   },
   "cal_day_muted_14": {
     "size": [
       34,
       32
     ],
-    "colors": 32
+    "colors": 34
   },
   "cal_day_muted_15": {
     "size": [
@@ -704,14 +704,14 @@
       34,
       32
     ],
-    "colors": 30
+    "colors": 29
   },
   "cal_day_muted_24": {
     "size": [
       34,
       32
     ],
-    "colors": 36
+    "colors": 35
   },
   "cal_day_muted_25": {
     "size": [
@@ -725,7 +725,7 @@
       34,
       32
     ],
-    "colors": 34
+    "colors": 35
   },
   "cal_day_muted_27": {
     "size": [
@@ -760,7 +760,7 @@
       34,
       32
     ],
-    "colors": 30
+    "colors": 34
   },
   "cal_day_holiday_01": {
     "size": [
@@ -781,14 +781,14 @@
       34,
       32
     ],
-    "colors": 22
+    "colors": 23
   },
   "cal_day_holiday_04": {
     "size": [
       34,
       32
     ],
-    "colors": 15
+    "colors": 18
   },
   "cal_day_holiday_05": {
     "size": [
@@ -851,14 +851,14 @@
       34,
       32
     ],
-    "colors": 23
+    "colors": 21
   },
   "cal_day_holiday_14": {
     "size": [
       34,
       32
     ],
-    "colors": 20
+    "colors": 22
   },
   "cal_day_holiday_15": {
     "size": [
@@ -921,7 +921,7 @@
       34,
       32
     ],
-    "colors": 22
+    "colors": 23
   },
   "cal_day_holiday_24": {
     "size": [
@@ -942,7 +942,7 @@
       34,
       32
     ],
-    "colors": 23
+    "colors": 24
   },
   "cal_day_holiday_27": {
     "size": [
@@ -970,7 +970,7 @@
       34,
       32
     ],
-    "colors": 22
+    "colors": 21
   },
   "cal_day_holiday_31": {
     "size": [
@@ -984,11 +984,11 @@
       105,
       30
     ],
-    "colors": 21
+    "colors": 22
   },
   "cal_month_02": {
     "size": [
-      112,
+      111,
       31
     ],
     "colors": 21
@@ -998,60 +998,60 @@
       82,
       26
     ],
-    "colors": 20
+    "colors": 21
   },
   "cal_month_04": {
     "size": [
       61,
       32
     ],
-    "colors": 17
+    "colors": 18
   },
   "cal_month_05": {
     "size": [
-      58,
+      57,
       30
     ],
     "colors": 20
   },
   "cal_month_06": {
     "size": [
-      65,
+      66,
       25
     ],
-    "colors": 18
+    "colors": 17
   },
   "cal_month_07": {
     "size": [
       56,
       31
     ],
-    "colors": 20
+    "colors": 21
   },
   "cal_month_08": {
     "size": [
       91,
       31
     ],
-    "colors": 23
+    "colors": 19
   },
   "cal_month_09": {
     "size": [
       137,
       31
     ],
-    "colors": 21
+    "colors": 20
   },
   "cal_month_10": {
     "size": [
       102,
       26
     ],
-    "colors": 21
+    "colors": 23
   },
   "cal_month_11": {
     "size": [
-      130,
+      129,
       26
     ],
     "colors": 21
@@ -1117,7 +1117,7 @@
       23,
       34
     ],
-    "colors": 15
+    "colors": 13
   },
   "cal_year_8": {
     "size": [
@@ -1138,7 +1138,7 @@
       42,
       24
     ],
-    "colors": 39
+    "colors": 41
   },
   "cal_weekday_1": {
     "size": [
@@ -1152,14 +1152,14 @@
       42,
       24
     ],
-    "colors": 42
+    "colors": 45
   },
   "cal_weekday_3": {
     "size": [
       42,
       24
     ],
-    "colors": 39
+    "colors": 37
   },
   "cal_weekday_4": {
     "size": [
@@ -1173,7 +1173,7 @@
       42,
       24
     ],
-    "colors": 23
+    "colors": 24
   },
   "cal_weekday_6": {
     "size": [
@@ -1187,46 +1187,46 @@
       61,
       15
     ],
-    "colors": 36
+    "colors": 38
   },
   "cal_hint": {
     "size": [
-      170,
-      18
+      120,
+      33
     ],
-    "colors": 45
+    "colors": 46
   },
   "cal_status_sync": {
     "size": [
       115,
       15
     ],
-    "colors": 44
+    "colors": 45
   },
   "cal_status_offline": {
     "size": [
       127,
       15
     ],
-    "colors": 40
+    "colors": 41
   },
   "cal_status_loading": {
     "size": [
       113,
       15
     ],
-    "colors": 42
+    "colors": 44
   },
   "cal_status_estimated": {
     "size": [
-      141,
+      140,
       15
     ],
-    "colors": 39
+    "colors": 45
   },
   "cal_status_stale": {
     "size": [
-      113,
+      112,
       15
     ],
     "colors": 43
@@ -1236,7 +1236,7 @@
       112,
       15
     ],
-    "colors": 43
+    "colors": 41
   },
   "cal_arrow_left": {
     "size": [

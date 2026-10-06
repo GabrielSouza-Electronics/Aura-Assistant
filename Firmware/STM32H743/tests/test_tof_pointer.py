@@ -65,7 +65,10 @@ extern "C" uint32_t xTaskGetTickCount(void) { return now; }
 class Input : public ModelListener {
 public:
     bool present = false;
-    unsigned clicks = 0;
+    unsigned clicks = 0, backs = 0;
+    bool near = false;
+    void handNearUpdated(bool n) override { near=n; }
+    void handBackRequested() override { ++backs; }
     void handClicked() override { ++clicks; }
     float x = 0, y = 0;
     void handUpdated(bool p, float a, float b) override {
@@ -94,6 +97,8 @@ int main() {
     model.playMenuSound(MenuSound::Tick); assert(requested == APP_UI_AUDIO_TICK);
     model.playMenuSound(MenuSound::Enter); assert(requested == APP_UI_AUDIO_ENTER);
     model.playMenuSound(MenuSound::Exit); assert(requested == APP_UI_AUDIO_EXIT);
+    model.playMenuSound(MenuSound::TaskComplete); assert(requested == APP_UI_AUDIO_TASK_COMPLETE);
+    model.playMenuSound(MenuSound::TaskReopen); assert(requested == APP_UI_AUDIO_TASK_REOPEN);
     assert(menuSoundForTransition(-1, 0, -1, 1, true, true) == MenuSound::Tick);
     assert(menuSoundForTransition(-1, 4, -1, 0, true, true) == MenuSound::Tick);
     assert(menuSoundForTransition(-1, 1, 1, 1, true, true) == MenuSound::Enter);
@@ -227,20 +232,43 @@ int main() {
     for (int i=0; i<200; ++i) snap.tick(true,0.3f,0);
     assert(snap.getScreen() == -1);
     assert(fabs(snap.getAngle() - before + 3.3f) < 0.0001f);
-    // Strict threshold, one click per approach, hysteresis and stale samples.
-    APP_HandTracking_Reset();
-    frame(25); model.tick(); assert(input.clicks == 0);
-    frame(24); model.tick(); assert(input.clicks == 1);
-    model.tick(); frame(15); model.tick(); assert(input.clicks == 1);
-    frame(34); model.tick(); frame(24); model.tick(); assert(input.clicks == 1);
-    frame(0); model.tick(); frame(24); model.tick(); assert(input.clicks == 1);
-    frame(35); model.tick(); frame(24); model.tick(); assert(input.clicks == 2);
-    frame(35); model.tick(); frame(24); now += 600;
-    model.tick(); assert(input.clicks == 2);
-    frame(35); model.tick(); frame(24); frame(0);
-    model.tick(); assert(input.clicks == 2);
+    // Strict <30 mm; release commits a short click, 2 s commits only back.
+    APP_HandTracking_Reset(); now=1000;
+    frame(30); model.tick(); assert(!input.near && input.clicks==0);
+    frame(29); model.tick(); assert(input.near && input.clicks==0);
+    now+=200; frame(30); model.tick(); assert(input.clicks==1 && !input.near);
+    model.tick(); assert(input.clicks==1);
+    frame(29); model.tick();
+    for(int i=0;i<9;++i) { now+=200; frame(29); model.tick(); }
+    now+=199; frame(29); model.tick(); assert(input.backs==0 && input.clicks==1);
+    ++now; frame(29); model.tick(); assert(input.backs==1 && input.clicks==1);
+    for(int i=0;i<15;++i) { now+=200; frame(29); model.tick(); }
+    assert(input.backs==1);
+    frame(30); model.tick(); assert(input.clicks==1);
+    frame(20); model.tick(); now+=200; frame(0); model.tick(); assert(input.clicks==2);
+    frame(29); model.tick(); now+=600; model.tick(); assert(!input.near);
+    frame(29); model.tick(); assert(input.backs==1);
+    APP_HandTracking_Reset(); model.tick();
+    now=UINT32_MAX-1000; frame(29); model.tick();
+    for(int i=0;i<10;++i) { now+=200; frame(29); model.tick(); }
+    assert(input.backs==2);
+    frame(30); model.tick(); assert(input.clicks==2);
 
     MenuLogic clicked;
+    MenuLogic proximity;
+    for (int i=0;i<30;++i) proximity.tick(true,0.7f,0);
+    const float heldAngle=proximity.getAngle();
+    const int heldItem=proximity.getSelected();
+    const float visible=proximity.getVisibility();
+    for (int i=0;i<120;++i) {
+        proximity.tick(true,1,-1,false,true);
+        assert(proximity.getVisibility()>=visible);
+        assert(proximity.getAngle()==heldAngle && proximity.getSelected()==heldItem);
+        assert(proximity.getScreen()==-1 && proximity.getDwellStage()==-1);
+    }
+    proximity.tick(true,0,0,true);
+    assert(proximity.getScreen()==heldItem);
+
     clicked.tick(true, 1, 0, true);
     assert(clicked.getScreen() == 0 && clicked.getAngle() == 0);
     assert(clicked.takeNavEvent() == 1); // Same visual effect as dwell.
@@ -249,7 +277,8 @@ int main() {
     for (int i=1; i<HandInput::BACK_HOLD; ++i) clicked.tick(true,0,-1);
     assert(clicked.getScreen() == 0); // A short pull-down does not go back.
     clicked.tick(true,0,-1);
-    assert(clicked.getScreen() == -1);
+    assert(clicked.getScreen() == 0);
+    clicked.close();
     clicked.tick(true,0,0,true); assert(clicked.getScreen() == 0);
     MenuLogic rejected;
     rejected.tick(false,0,0,true); assert(rejected.getScreen() == -1);
@@ -259,7 +288,8 @@ int main() {
     assert(dwell.getScreen() == -1);
     dwell.tick(true,0,0); assert(dwell.getScreen() == 0);
     for (int i=0; i<HandInput::BACK_HOLD; ++i) dwell.tick(true,0,-1);
-    assert(dwell.getScreen() == -1);
+    assert(dwell.getScreen() == 0);
+    dwell.close();
     MenuLogic noShortcut;
     for (int i=0; i<12; ++i) noShortcut.tick(true,0,1);
     assert(noShortcut.getScreen() == -1);

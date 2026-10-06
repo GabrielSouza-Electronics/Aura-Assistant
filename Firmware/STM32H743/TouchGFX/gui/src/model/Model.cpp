@@ -10,7 +10,9 @@ extern "C"
 #include "app_ui_audio.h"
 #include "app_ui_settings.h"
 #elif defined(_WIN32)
+#ifndef NOMINMAX
 #define NOMINMAX
+#endif
 #include <windows.h>
 #include <mmsystem.h>
 #include <cwchar>
@@ -28,11 +30,15 @@ void Model::tick()
     int8_t x = 0;
     int8_t y = 0;
     const bool present = APP_HandTracking_ReadPointer(&x, &y);
-    const bool click = APP_HandTracking_TakeClick();
+    const bool pointerClick = APP_HandTracking_TakeClick();
+    const bool near = APP_HandTracking_ReadNear();
+    const bool back = APP_HandTracking_TakeBack();
     if (modelListener)
     {
         modelListener->handUpdated(present, x / 10.0f, y / 10.0f);
-        if (present && click) modelListener->handClicked();
+        modelListener->handNearUpdated(near);
+        if (back) modelListener->handBackRequested();
+        else if (pointerClick) modelListener->handClicked();
 
         /* The simulator never pushes a level, so the View keeps its demo value. */
         const uint8_t wifiLevel = APP_WiFi_GetSignalLevel();
@@ -173,6 +179,8 @@ void Model::playMenuSound(MenuSound sound)
         case MenuSound::Tick: APP_UIAudio_Request(APP_UI_AUDIO_TICK); break;
         case MenuSound::Enter: APP_UIAudio_Request(APP_UI_AUDIO_ENTER); break;
         case MenuSound::Exit: APP_UIAudio_Request(APP_UI_AUDIO_EXIT); break;
+        case MenuSound::TaskComplete: APP_UIAudio_Request(APP_UI_AUDIO_TASK_COMPLETE); break;
+        case MenuSound::TaskReopen: APP_UIAudio_Request(APP_UI_AUDIO_TASK_REOPEN); break;
         default: break;
     }
 #elif defined(_WIN32)
@@ -182,6 +190,8 @@ void Model::playMenuSound(MenuSound sound)
         case MenuSound::Tick: name = L"10_nav_tick.wav"; break;
         case MenuSound::Enter: name = L"20_menu_enter.wav"; break;
         case MenuSound::Exit: name = L"21_menu_exit.wav"; break;
+        case MenuSound::TaskComplete: name = L"40_success.wav"; break;
+        case MenuSound::TaskReopen: name = L"21_menu_exit.wav"; break;
         default: return;
     }
     // Resolve from TouchGFX/build/bin, independent of the simulator's cwd.

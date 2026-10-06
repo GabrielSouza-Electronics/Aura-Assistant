@@ -13,6 +13,7 @@ static stmdev_ctx_t bsp_imu_context;
 static uint16_t bsp_imu_address_hal;
 static uint8_t bsp_imu_who_am_i;
 static bool bsp_imu_initialized;
+static bool bsp_imu_tap_enabled;
 
 static int32_t BSP_IMU_Write(void *handle, uint8_t reg,
                              const uint8_t *buffer, uint16_t length)
@@ -46,6 +47,8 @@ static bool BSP_IMU_TryAddress(uint8_t address_7bit)
 
 BSP_IMU_Status_t BSP_IMU_Init(void)
 {
+    bsp_imu_initialized = false;
+    bsp_imu_tap_enabled = false;
     uint8_t reset;
     uint32_t start_tick;
 
@@ -90,6 +93,46 @@ BSP_IMU_Status_t BSP_IMU_Init(void)
     }
 
     bsp_imu_initialized = true;
+    return BSP_IMU_OK;
+}
+
+BSP_IMU_Status_t BSP_IMU_EnableSingleTap(void)
+{
+    if (!bsp_imu_initialized) return BSP_IMU_ERROR_NOT_INITIALIZED;
+    /* ST AN5125 Rev 2, sections 5.5.1/5.5.4:
+       416Hz, +/-2g; threshold field 9 (562.5mg), shock 2, quiet 1.
+       This is a documented starting profile, not a validated enclosure tune.
+       Latch + INT1_DOUBLE_TAP route preserves a SINGLE event until TAP_SRC
+       is read, even though double-tap recognition itself is disabled. */
+    ism330dlc_int1_route_t route = {0};
+    route.int1_single_tap = 1;
+    route.int1_double_tap = 1;
+    if (ism330dlc_xl_full_scale_set(&bsp_imu_context,ISM330DLC_2g)!=0 ||
+        ism330dlc_xl_data_rate_set(&bsp_imu_context,ISM330DLC_XL_ODR_416Hz)!=0 ||
+        ism330dlc_gy_data_rate_set(&bsp_imu_context,ISM330DLC_GY_ODR_OFF)!=0 ||
+        ism330dlc_tap_detection_on_x_set(&bsp_imu_context,1)!=0 ||
+        ism330dlc_tap_detection_on_y_set(&bsp_imu_context,1)!=0 ||
+        ism330dlc_tap_detection_on_z_set(&bsp_imu_context,1)!=0 ||
+        ism330dlc_tap_threshold_x_set(&bsp_imu_context,9)!=0 ||
+        ism330dlc_tap_shock_set(&bsp_imu_context,2)!=0 ||
+        ism330dlc_tap_quiet_set(&bsp_imu_context,1)!=0 ||
+        ism330dlc_tap_mode_set(&bsp_imu_context,ISM330DLC_ONLY_SINGLE)!=0 ||
+        ism330dlc_int_notification_set(&bsp_imu_context,ISM330DLC_INT_LATCHED)!=0 ||
+        ism330dlc_pin_int1_route_set(&bsp_imu_context,route)!=0)
+        return BSP_IMU_ERROR_COMMUNICATION;
+    ism330dlc_tap_src_t source;
+    if (ism330dlc_tap_src_get(&bsp_imu_context,&source)!=0) return BSP_IMU_ERROR_COMMUNICATION;
+    bsp_imu_tap_enabled=true;
+    return BSP_IMU_OK;
+}
+BSP_IMU_Status_t BSP_IMU_TakeSingleTap(bool *detected)
+{
+    if (!detected) return BSP_IMU_ERROR_INVALID_ARGUMENT;
+    *detected=false;
+    if (!bsp_imu_initialized || !bsp_imu_tap_enabled) return BSP_IMU_ERROR_NOT_INITIALIZED;
+    ism330dlc_tap_src_t source;
+    if (ism330dlc_tap_src_get(&bsp_imu_context,&source)!=0) return BSP_IMU_ERROR_COMMUNICATION;
+    *detected=source.tap_ia && source.single_tap;
     return BSP_IMU_OK;
 }
 

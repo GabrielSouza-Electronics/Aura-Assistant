@@ -85,7 +85,8 @@ static void BSP_AUDIO_OUT_FillPCM48kMonoHalf(size_t half)
     }
 
     bsp_audio_out_pcm_offset += sample_count;
-    if (bsp_audio_out_pcm_offset >= bsp_audio_out_pcm_sample_count)
+    if (bsp_audio_out_pcm_offset >= bsp_audio_out_pcm_sample_count &&
+        bsp_audio_out_pcm_end_half == 0xFFU)
     {
         bsp_audio_out_pcm_end_half = (uint8_t)half;
     }

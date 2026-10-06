@@ -1,5 +1,9 @@
 #include "app_calendar.h"
 #include "calendar_certificates.h"
+#include "app_tasks.h"
+#include "app_reminders.h"
+#include "app_web_config.h"
+#include "web_state.h"
 #include "FreeRTOS.h"
 #include "task.h"
 #include "cmsis_os2.h"
@@ -10,7 +14,7 @@
 /* Explicitly initialized NOLOAD storage in existing SRAM4. No DMA uses it.
  * Avoid consuming the nearly full DTCM with HTTP buffers/task stack. */
 #define CAL_RAM __attribute__((section(".calendar"), aligned(8)))
-#define RESPONSE_CAP 16384U
+#define RESPONSE_CAP 32768U
 typedef struct { CalHolidays holidays; uint32_t day; } Cache;
 static struct {
     char response[RESPONSE_CAP+1];
@@ -19,6 +23,7 @@ static struct {
     uint16_t requested_year;
     bool online;
     uint32_t clock_tick, sync_day, shared_tick;
+    WebState web;
 } state CAL_RAM;
 static StackType_t calendar_stack[1536] CAL_RAM;
 static StaticTask_t calendar_task CAL_RAM;
@@ -42,11 +47,12 @@ static uint32_t day_key(const CalDate *d)
 /* A single sequential socket owns response[]. W6X's HTTP helper reports
  * completion before the body and does not decode chunked responses; use the
  * supported socket API plus our bounded, host-tested HTTP framing instead. */
-static bool get_json(bool holidays, unsigned year, char **json)
+static bool http_json(const char *host,const char *cert,const char *name,
+                      const char *method,const char *uri,const char *token,
+                      const char *payload,char **json)
 {
-    const char *host=holidays?"worldtimeandweather.com":"timeapi.io";
-    const char *cert=holidays?calendar_holidays_ca:calendar_time_ca;
-    const char *name=holidays?"cal_holidays_ca.pem":"cal_time_ca.pem";
+    if (!host || !*host || !cert || !*cert || strchr(host,'\r') || strchr(host,'\n') ||
+        (token && (strchr(token,'\r') || strchr(token,'\n')))) return false;
     uint8_t ip[4];
     if (W6X_Net_ResolveHostAddress(host,ip)!=W6X_STATUS_OK) return false;
     int32_t sock=W6X_Net_Socket(AF_INET,SOCK_STREAM,IPPROTO_TLS_1_2);
@@ -68,10 +74,10 @@ static bool get_json(bool holidays, unsigned year, char **json)
     address.sin_family=AF_INET; address.sin_port=PP_HTONS(443);
     memcpy(&address.sin_addr.s_addr,ip,sizeof(ip));
     if (W6X_Net_Connect(sock,(struct sockaddr *)&address,sizeof(address))!=0) goto done;
-    char uri[100],request[300];
-    if (holidays) snprintf(uri,sizeof(uri),"/v1/holidays?country=AE&year=%u&type=public",year);
-    else strcpy(uri,"/api/Time/current/zone?timeZone=Asia%2FDubai");
-    int n=snprintf(request,sizeof(request),"GET %s HTTP/1.1\r\nHost: %s\r\nUser-Agent: AuraAssistant/1.0\r\nAccept: application/json\r\nAccept-Encoding: identity\r\nConnection: close\r\n\r\n",uri,host);
+    char request[1024];
+    int n=snprintf(request,sizeof(request),"%s %s HTTP/1.1\r\nHost: %s\r\nUser-Agent: AuraAssistant/1.0\r\nAccept: application/json\r\nAccept-Encoding: identity\r\n%s%s%sContent-Type: application/json\r\nContent-Length: %u\r\nConnection: close\r\n\r\n%s",
+        method,uri,host,token?"Authorization: Bearer ":"",token?token:"",token?"\r\n":"",
+        (unsigned)(payload?strlen(payload):0),payload?payload:"");
     if (n<=0 || (size_t)n>=sizeof(request)) goto done;
     size_t sent=0;
     while (sent<(size_t)n) {
@@ -100,6 +106,74 @@ done:
     (void)W6X_Net_Close(sock);
     if (credential) (void)W6X_Net_TLS_Credential_Delete(tag,W6X_NET_TLS_CREDENTIAL_CA_CERTIFICATE);
     return ok;
+}
+
+static bool get_json(bool holidays,unsigned year,char **json)
+{
+    char uri[100];
+    if (holidays) snprintf(uri,sizeof(uri),"/v1/holidays?country=AE&year=%u&type=public",year);
+    else strcpy(uri,"/api/Time/current/zone?timeZone=Asia%2FDubai");
+    return http_json(holidays?"worldtimeandweather.com":"timeapi.io",
+        holidays?calendar_holidays_ca:calendar_time_ca,
+        holidays?"cal_holidays_ca.pem":"cal_time_ca.pem","GET",uri,NULL,NULL,json);
+}
+
+static void web_run(void *arg)
+{
+    (void)arg;
+    uint32_t retry=APP_WEB_POLL_SECONDS;
+    bool synced=false,sntp=false;
+    for (;;) {
+        bool online; uint16_t wanted;
+        taskENTER_CRITICAL(); online=state.online; wanted=state.requested_year; taskEXIT_CRITICAL();
+        uint32_t wait=APP_WEB_POLL_SECONDS;
+        if (online) {
+            if (!sntp) sntp=W6X_Net_SNTP_SetConfiguration(1,0,(uint8_t *)"pool.ntp.org",NULL,NULL)==W6X_STATUS_OK;
+            if (!wanted) {
+                CalSnapshot clock; APP_CalendarRead(&clock);
+                wanted=clock.time_valid?clock.now.year:CAL_FIRST_YEAR;
+            }
+            char uri[128],*json=NULL;
+            bool ok=true; uint32_t id;
+            // One pending completion per poll, retried idempotently on transport failure.
+            bool completed;
+            bool reminderChange=false;
+            if (APP_RemindersNextChange(&id,&completed)) reminderChange=true;
+            if (reminderChange || APP_TasksNextChange(&id,&completed)) {
+                snprintf(uri,sizeof(uri),"/api/device/v1/%s/%lu/completion",reminderChange?"reminders":"tasks",(unsigned long)id);
+                bool accepted=false;
+                ok=http_json(APP_WEB_HOST,APP_WEB_ROOT_CA_PEM,"aura_web_ca.pem","PUT",uri,
+                    APP_WEB_DEVICE_TOKEN,completed?"{\"completed\":true}":"{\"completed\":false}",&json)&&Web_ParseCompletion(json,id,&accepted);
+                if (ok) {
+                    if (reminderChange) (void)APP_RemindersAcknowledgeChange(id,completed,accepted);
+                    else (void)APP_TasksAcknowledgeChange(id,completed,accepted);
+                }
+            }
+            snprintf(uri,sizeof(uri),"/api/device/v1/state?calendar_year=%u",wanted);
+            ok=ok && http_json(APP_WEB_HOST,APP_WEB_ROOT_CA_PEM,"aura_web_ca.pem","GET",uri,
+                APP_WEB_DEVICE_TOKEN,NULL,&json)&&Web_ParseState(json,wanted,&state.web);
+            if (ok) {
+                // Repeated revisions are valid polls, but older snapshots are rejected.
+                // Tasks store rejects an equal revision without resetting pending work.
+                if (!synced || state.web.revision>=state.sync_day) {
+                    (void)APP_TasksPublish(state.web.tasks,state.web.count,state.web.revision);
+                    if (state.web.reminders_present)
+                        (void)APP_RemindersPublish(state.web.reminders,state.web.reminder_count,state.web.revision);
+                    taskENTER_CRITICAL();
+                    state.shared.now=state.web.now; state.shared.time_valid=true;
+                    state.shared.holidays=state.web.holidays; state.shared.holidays_valid=true;
+                    state.shared.stale=false; state.shared.online=state.online;
+                    state.shared_tick=state.clock_tick=xTaskGetTickCount();
+                    state.sync_day=state.web.revision;
+                    taskEXIT_CRITICAL();
+                    synced=true;
+                } else ok=false;
+            }
+            if (ok) retry=APP_WEB_POLL_SECONDS;
+            else { wait=retry; retry=retry<30?retry*2:60; taskENTER_CRITICAL(); state.shared.stale=true; taskEXIT_CRITICAL(); }
+        } else { taskENTER_CRITICAL(); state.shared.stale=true; taskEXIT_CRITICAL(); }
+        osDelay(pdMS_TO_TICKS(wait*1000));
+    }
 }
 
 static void advance_clock(CalSnapshot *s)
@@ -184,7 +258,7 @@ bool APP_CalendarStart(void)
     state.clock_tick=state.shared_tick=xTaskGetTickCount();
     const osThreadAttr_t attr={.name="Calendar",.stack_mem=calendar_stack,.stack_size=sizeof(calendar_stack),
         .cb_mem=&calendar_task,.cb_size=sizeof(calendar_task),.priority=osPriorityBelowNormal};
-    worker=osThreadNew(run,NULL,&attr);
+    worker=osThreadNew(APP_WEB_ENABLED?web_run:run,NULL,&attr);
     return worker!=NULL;
 }
 void APP_CalendarSetOnline(bool online)
