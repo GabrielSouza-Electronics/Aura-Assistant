@@ -62,3 +62,8 @@ def write_hints():
 
 if __name__ == '__main__':
     main()
+
+# Keep the firmware bound to Designer bitmaps after regenerating artwork.
+if __name__ == '__main__':
+    import migrate_designer_assets
+    migrate_designer_assets.main()

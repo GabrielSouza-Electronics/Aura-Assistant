@@ -10,6 +10,7 @@ public:
     
     virtual ~ModelListener() {}
     virtual void handUpdated(bool, float, float) {}
+    virtual void avatarFlagsUpdated(bool, bool) {}
     virtual void handClicked() {}
     virtual void handNearUpdated(bool) {}
     virtual void handBackRequested() {}

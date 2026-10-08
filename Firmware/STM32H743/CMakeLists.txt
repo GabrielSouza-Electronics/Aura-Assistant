@@ -105,6 +105,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
 
     # Application
     App/Src/app.c
+    App/Src/app_avatar.c
     App/Src/app_hand_tracking.c
     App/Src/app_ui_audio.c
     App/Src/app_ui_settings.c

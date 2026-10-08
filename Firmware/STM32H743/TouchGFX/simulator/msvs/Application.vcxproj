@@ -29,6 +29,8 @@
     <ClCompile Include="..\..\gui\src\common\MenuLogic.cpp"/>
     <ClCompile Include="..\..\gui\src\common\SettingsLogic.cpp"/>
     <ClCompile Include="..\..\gui\src\common\GlyphText.cpp"/>
+    <ClCompile Include="..\..\gui\src\common\CalendarWidget.cpp"/>
+    <ClCompile Include="..\..\gui\src\common\TasksWidget.cpp"/>
   </ItemGroup>
   <ItemGroup>
     <None Include="$(ApplicationRoot)\assets\texts\texts.xml"/>
@@ -190,6 +192,12 @@
     <ClInclude Include="..\..\gui\include\gui\common\GlyphText.hpp"/>
     <ClInclude Include="..\..\gui\include\gui\common\SettingsGlyphs.hpp"/>
     <ClInclude Include="..\..\gui\include\gui\common\HandInput.hpp"/>
+    <ClInclude Include="..\..\gui\include\gui\common\CalendarLogic.hpp"/>
+    <ClInclude Include="..\..\gui\include\gui\common\CalendarWidget.hpp"/>
+    <ClInclude Include="..\..\gui\include\gui\common\TasksLogic.hpp"/>
+    <ClInclude Include="..\..\gui\include\gui\common\TasksWidget.hpp"/>
+    <ClInclude Include="..\..\gui\include\gui\common\AvatarAnimation.hpp"/>
+    <ClInclude Include="..\..\gui\include\gui\common\AvatarBitmaps.hpp"/>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="$(ApplicationRoot)\generated\simulator\touchgfx.rc"/>

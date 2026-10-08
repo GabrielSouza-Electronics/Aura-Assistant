@@ -1,5 +1,6 @@
 #include <gui/common/GlyphText.hpp>
 #include "SettingsStyleAssets.hpp"
+#include <touchgfx/widgets/Image.hpp>
 #include <touchgfx/widgets/PixelDataWidget.hpp>
 #include <touchgfx/hal/HAL.hpp>
 #include <touchgfx/Bitmap.hpp>
@@ -76,9 +77,9 @@ void GlyphText::draw(const Rect& invalidatedArea) const
         Rect dirty = r & invalidatedArea;
         if (dirty.isEmpty()) continue;
         translateRectToAbsolute(r);
-        PixelDataWidget sprite;
-        sprite.setBitmapFormat(Bitmap::ARGB8888);
-        sprite.setPixelData(reinterpret_cast<uint8_t*>(const_cast<uint32_t*>(g.pixels)));
+        Image sprite;
+
+        sprite.setBitmap(Bitmap(g.bitmapId));
         sprite.setPosition(r.x, r.y, g.width, g.height);
         sprite.setAlpha(alpha);
         // draw() takes widget-local coordinates, even for this temporary sprite.

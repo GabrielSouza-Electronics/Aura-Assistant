@@ -1,6 +1,6 @@
 #pragma once
 #include <stdint.h>
-struct SettingsStyleSprite { const uint32_t* pixels; int16_t width, height; uint16_t advance16; };
+struct SettingsStyleSprite { uint16_t bitmapId; int16_t width, height; uint16_t advance16; };
 extern const SettingsStyleSprite settingsStyleRows[4][2];
 extern const SettingsStyleSprite settingsStyleGlow;
 extern const SettingsStyleSprite settingsStyleFocusFrame;

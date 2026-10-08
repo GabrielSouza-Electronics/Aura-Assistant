@@ -89,7 +89,7 @@ int main(void)
   /* USER CODE END 1 */
 
   /* MPU Configuration--------------------------------------------------------*/
-  MPU_Config();
+  MPU_Config(); 
 
   /* Enable caches only after the MPU has marked the LTDC framebuffer as
      non-cacheable and the memory-mapped QSPI aperture as read-only/cacheable. */
@@ -99,7 +99,7 @@ int main(void)
   /* MCU Configuration--------------------------------------------------------*/
 
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
-  HAL_Init(); 
+  HAL_Init();   
   
   /* USER CODE BEGIN Init */
 
@@ -113,7 +113,7 @@ int main(void)
 
   /* USER CODE BEGIN SysInit */
 
-  /* USER CODE END SysInit */
+  /* USER CODE END SysInit */ 
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();

@@ -26,6 +26,7 @@ public:
     virtual void deactivate();
     virtual void handUpdated(bool present, float x, float y);
     virtual void handClicked() override;
+    virtual void avatarFlagsUpdated(bool preparing, bool speaking) override;
     virtual void handNearUpdated(bool) override;
     virtual void handBackRequested() override;
     virtual void wifiLevelUpdated(uint8_t level) override;

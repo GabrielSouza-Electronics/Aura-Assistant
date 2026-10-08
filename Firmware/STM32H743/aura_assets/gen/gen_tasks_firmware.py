@@ -127,3 +127,8 @@ def main():
     (OUT/'TasksAssets.cpp').write_text(''.join(cpp))
     print(f'{len(assets)} Tasks sprites generated; deadline width max {font.getlength(longest)/S:.1f}px / 165px')
 if __name__=='__main__': main()
+
+# Keep the firmware bound to Designer bitmaps after regenerating artwork.
+if __name__ == '__main__':
+    import migrate_designer_assets
+    migrate_designer_assets.main()

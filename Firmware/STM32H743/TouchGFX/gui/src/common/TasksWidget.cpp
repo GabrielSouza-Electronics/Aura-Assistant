@@ -1,5 +1,6 @@
 #include <gui/common/TasksWidget.hpp>
 #include "TasksAssets.hpp"
+#include <touchgfx/widgets/Image.hpp>
 #include <touchgfx/widgets/PixelDataWidget.hpp>
 #include <touchgfx/hal/HAL.hpp>
 #include <touchgfx/Color.hpp>
@@ -121,9 +122,9 @@ void TasksWidget::sprite(const SettingsStyleSprite& s,int x,int y,const Rect& ar
     Rect r(y,480-x-s.height,s.width,s.height); Rect dirty=r&area;
     if (dirty.isEmpty() || !alpha) return;
     dirty.x-=r.x; dirty.y-=r.y; translateRectToAbsolute(r);
-    PixelDataWidget image; image.setPosition(r.x,r.y,r.width,r.height);
-    image.setBitmapFormat(Bitmap::ARGB8888);
-    image.setPixelData(reinterpret_cast<uint8_t*>(const_cast<uint32_t*>(s.pixels)));
+    Image image; image.setPosition(r.x,r.y,r.width,r.height);
+
+    image.setBitmap(Bitmap(s.bitmapId));
     image.setAlpha(alpha); image.draw(dirty);
 }
 void TasksWidget::text(const char* value,int x,int y,int maxWidth,bool title,bool strike,const Rect& area,uint8_t alpha) const

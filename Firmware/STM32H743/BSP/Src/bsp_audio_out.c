@@ -126,6 +126,11 @@ BSP_AUDIO_OUT_Status_t BSP_AUDIO_OUT_PlayEffect48kMono(
     if (bsp_audio_out_busy && !bsp_audio_out_effect)
         return BSP_AUDIO_OUT_ERROR_BUSY;
 
+    /* Muted requests succeed without enabling the amplifier or starting DMA. */
+    if (BSP_AUDIO_OUT_GetVolume() == 0U)
+    {
+        return BSP_AUDIO_OUT_OK;
+    }
     /* Stop DMA before touching its buffer; restarting always begins at sample 0. */
     if (HAL_I2S_DMAStop(&hi2s1) != HAL_OK)
     {
@@ -188,6 +193,11 @@ BSP_AUDIO_OUT_Status_t BSP_AUDIO_OUT_PlayPCM48kMonoBlocking(
     if (bsp_audio_out_busy)
     {
         return BSP_AUDIO_OUT_ERROR_BUSY;
+    }
+
+    if (BSP_AUDIO_OUT_GetVolume() == 0U)
+    {
+        return BSP_AUDIO_OUT_OK;
     }
 
     bsp_audio_out_pcm_source = pcm_mono;

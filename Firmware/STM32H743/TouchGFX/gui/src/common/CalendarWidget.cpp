@@ -1,5 +1,6 @@
 #include <gui/common/CalendarWidget.hpp>
 #include "CalendarAssets.hpp"
+#include <touchgfx/widgets/Image.hpp>
 #include <touchgfx/widgets/PixelDataWidget.hpp>
 #include <string.h>
 #if defined(STM32H743xx)
@@ -114,11 +115,11 @@ void CalendarWidget::sprite(int id,int x,int y,const Rect& area,uint8_t alpha) c
     if (dirty.isEmpty() || !alpha) return;
     dirty.x-=r.x; dirty.y-=r.y;
     translateRectToAbsolute(r);
-    PixelDataWidget image;
+    Image image;
     image.setPosition(r.x,r.y,r.width,r.height);
-    image.setBitmapFormat(Bitmap::ARGB8888);
+
     // draw() only reads this pointer; the pixels remain const in QSPI.
-    image.setPixelData(const_cast<uint8_t*>(s.pixels));
+    image.setBitmap(Bitmap(s.bitmapId));
     image.setAlpha(alpha);
     image.draw(dirty);
 }

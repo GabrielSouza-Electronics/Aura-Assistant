@@ -9,6 +9,7 @@ extern "C"
 #include "app_hand_tracking.h"
 #include "app_ui_audio.h"
 #include "app_ui_settings.h"
+#include "app_avatar.h"
 #elif defined(_WIN32)
 #ifndef NOMINMAX
 #define NOMINMAX
@@ -35,6 +36,9 @@ void Model::tick()
     const bool back = APP_HandTracking_TakeBack();
     if (modelListener)
     {
+        bool preparing=false, speaking=false;
+        APP_Avatar_Read(&preparing, &speaking);
+        modelListener->avatarFlagsUpdated(preparing, speaking);
         modelListener->handUpdated(present, x / 10.0f, y / 10.0f);
         modelListener->handNearUpdated(near);
         if (back) modelListener->handBackRequested();

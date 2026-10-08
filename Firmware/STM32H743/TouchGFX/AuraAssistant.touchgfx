@@ -89,8 +89,8 @@
             "Name": "lblOption",
             "X": 358,
             "Y": 194,
-            "Width": 29,
-            "Height": 91,
+            "Width": 34,
+            "Height": 88,
             "RelativeFilename": "aura\\text\\lbl_tasks.png"
           },
           {
@@ -120,8 +120,8 @@
             "Name": "msgState",
             "X": 410,
             "Y": 169,
-            "Width": 17,
-            "Height": 140,
+            "Width": 20,
+            "Height": 126,
             "RelativeFilename": "aura\\text\\msg_hold.png"
           },
           {
@@ -178,8 +178,8 @@
             "Name": "sbReady",
             "X": 273,
             "Y": 178,
-            "Width": 39,
-            "Height": 121,
+            "Width": 43,
+            "Height": 109,
             "RelativeFilename": "aura\\text\\sb_ready.png"
           },
           {
@@ -187,8 +187,8 @@
             "Name": "sbWave",
             "X": 340,
             "Y": 172,
-            "Width": 17,
-            "Height": 134,
+            "Width": 20,
+            "Height": 123,
             "RelativeFilename": "aura\\text\\sb_wave.png"
           }
         ],

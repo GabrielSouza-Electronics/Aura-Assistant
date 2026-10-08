@@ -32,6 +32,11 @@ void Screen1Presenter::requestSetting(uint8_t item, int8_t delta)
     model->requestSetting(item, delta);
 }
 
+void Screen1Presenter::avatarFlagsUpdated(bool preparing, bool speaking)
+{
+    view.setAvatarFlags(preparing, speaking);
+}
+
 void Screen1Presenter::handClicked()
 {
     view.requestHandClick();

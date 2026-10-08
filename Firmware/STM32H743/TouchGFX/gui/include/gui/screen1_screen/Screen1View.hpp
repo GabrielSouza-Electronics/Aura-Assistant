@@ -6,6 +6,7 @@
 
 #include <gui/common/CircuitField.hpp>
 #include <gui/common/MenuLogic.hpp>
+#include <gui/common/AvatarAnimation.hpp>
 #include <gui/common/SettingsLogic.hpp>
 #include <gui/common/GlyphText.hpp>
 #include <gui/common/CalendarWidget.hpp>
@@ -46,6 +47,7 @@ public:
        volume 0..10 exibido como "N/10" na linha Sound.                 */
     void setSettingText(uint8_t item, const char* text);
     void setVolume(uint8_t volume);
+    void setAvatarFlags(bool preparing, bool speaking) { avatarPreparing=preparing; avatarSpeaking=speaking; }
 
 protected:
     CircuitField field;
@@ -56,11 +58,11 @@ protected:
     /* Menu Settings: widgets criados em codigo, como o field. Ficam sobre
        as particulas e sob o titulo; as caixas sao translucidas.         */
     SettingsLogic   settings;
-    touchgfx::PixelDataWidget setGlow;
-    touchgfx::PixelDataWidget setFocusFrame;
-    touchgfx::PixelDataWidget setRow[SL_ROWS];
+    touchgfx::Image setGlow;
+    touchgfx::Image setFocusFrame;
+    touchgfx::Image setRow[SL_ROWS];
     GlyphText       setVal[SL_ROWS];
-    touchgfx::PixelDataWidget       setHint;        /* dica de gesto, no lugar do msgState */
+    touchgfx::Image       setHint;        /* dica de gesto, no lugar do msgState */
     const char*     hintText = nullptr;
     touchgfx::Image setSub;
     uint16_t lastRowId[SL_ROWS];
@@ -79,6 +81,11 @@ protected:
     bool  charging;
     int   lastScreen;
     unsigned chatHeaderTicks = 0;
+    touchgfx::Image avatar;
+    touchgfx::Image chatRay[6];
+    touchgfx::Image chatRaySpark;
+    AvatarAnimation avatarAnimation;
+    bool avatarPreparing=false, avatarSpeaking=false;
     uint16_t lastIconId[5];      /* evita setBitmap redundante             */
 
     void applyStatus();
@@ -91,7 +98,7 @@ protected:
     uint16_t startupTicks = 0;
     uint16_t startupAnimationTicks = 0;
     uint16_t startupSparkTicks = 0;     /* spark slide phase, starts with the line */
-    touchgfx::PixelDataWidget startupText[3];
+    touchgfx::Image startupText[3];
     int16_t heroHomeX = 0;
     int16_t heroHomeY = 0;
     void setHomeVisible(bool visible);

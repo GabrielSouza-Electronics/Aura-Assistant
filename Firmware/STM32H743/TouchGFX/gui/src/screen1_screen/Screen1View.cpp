@@ -1,5 +1,11 @@
 #include "TypographyHints.hpp"
 #include "StartupAssets.hpp"
+#include <gui/common/AvatarBitmaps.hpp>
+#if defined(STM32H743xx)
+#include "stm32h7xx_hal.h"
+#else
+#include <chrono>
+#endif
 #include "SettingsStyleAssets.hpp"
 #include <math.h>
 #include <gui/screen1_screen/Screen1View.hpp>
@@ -7,6 +13,17 @@
 #include <touchgfx/Color.hpp>
 
 using namespace touchgfx;
+
+static uint32_t avatarTimeMs()
+{
+#if defined(STM32H743xx)
+    return HAL_GetTick();
+#else
+    return static_cast<uint32_t>(std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::steady_clock::now().time_since_epoch()).count());
+#endif
+}
+
 
 /* Same curve as aura_assets/gen/gen_hero.py:
    round(255 * (0.5 - 0.5 * cos(2 * pi * frame / 24))). */
@@ -58,11 +75,10 @@ static const int SCREEN_SETTINGS = 0;     /* indice do item no carrossel  */
 
 static_assert(SL_ROWS == 4, "Settings style assets must match the menu rows");
 
-static void setSettingsSprite(touchgfx::PixelDataWidget& widget,
+static void setSettingsSprite(touchgfx::Image& widget,
                               const SettingsStyleSprite& sprite)
 {
-    widget.setBitmapFormat(Bitmap::ARGB8888);
-    widget.setPixelData(reinterpret_cast<uint8_t*>(const_cast<uint32_t*>(sprite.pixels)));
+    widget.setBitmap(Bitmap(sprite.bitmapId));
     widget.setWidth(sprite.width);
     widget.setHeight(sprite.height);
 }
@@ -157,6 +173,25 @@ void Screen1View::setupScreen()
     // The existing perimeter rim remains above the calendar content.
     insert(&battFrame, calendar);
     insert(&battFrame, tasks);
+    avatar.setBitmap(Bitmap(avatarIdleIds[0]));
+    avatar.setXY(80,90);
+    avatar.setVisible(false);
+    insert(&battFrame, avatar);
+    // Extend the existing divider by overlapping two copies 160 px apart.
+    // Reuse its generated bitmap and orientation; add soft offset glow layers.
+    for (unsigned i=0; i<6; ++i)
+    {
+        chatRay[i].setBitmap(Bitmap(BITMAP_LINE_ID));
+        const int16_t offset = i<2 ? 0 : (i<4 ? -3 : 3);
+        chatRay[i].setXY(380-chatRay[i].getWidth()/2+offset,
+                         239-chatRay[i].getHeight()/2+((i%2)==0 ? -80 : 80));
+        chatRay[i].setVisible(false);
+        insert(i == 0 ? static_cast<Drawable*>(&avatar) : static_cast<Drawable*>(&chatRay[i-1]), chatRay[i]);
+    }
+    chatRaySpark.setBitmap(Bitmap(BITMAP_SPARK_00_ID));
+    chatRaySpark.setVisible(false);
+    insert(&chatRay[5],chatRaySpark);
+
 
     applyStatus();
     heroHomeX = hero.getX();
@@ -169,8 +204,8 @@ void Screen1View::setupScreen()
     for (int i = 0; i < 3; ++i)
     {
         const StartupSprite& sprite = startupSprites[i == 0 ? 0 : i + 3];
-        startupText[i].setBitmapFormat(Bitmap::ARGB8888);
-        startupText[i].setPixelData(reinterpret_cast<uint8_t*>(const_cast<uint32_t*>(sprite.pixels)));
+
+        startupText[i].setBitmap(Bitmap(sprite.bitmapId));
         startupText[i].setPosition(textY[i] - sprite.width / 2,
                                   (480 - sprite.height) / 2, sprite.width, sprite.height);
         // Revealed by tickStartup() only after the Hero reaches the center.
@@ -319,8 +354,8 @@ void Screen1View::applySettings()
     {
         hintText = hint;
         const TypographyHint& sprite = typographyHints[settings.isEditing() ? 1 : 0];
-        setHint.setBitmapFormat(Bitmap::ARGB8888);
-        setHint.setPixelData(reinterpret_cast<uint8_t*>(const_cast<uint32_t*>(sprite.pixels)));
+
+        setHint.setBitmap(Bitmap(sprite.bitmapId));
         setHint.setWidth(sprite.width);
         setHint.setHeight(sprite.height);
     }
@@ -450,8 +485,7 @@ bool Screen1View::tickStartup()
         if (startupAnimationTicks % 45 == 0)
         {
             startupText[0].invalidate();
-            startupText[0].setPixelData(reinterpret_cast<uint8_t*>(const_cast<uint32_t*>(
-                startupSprites[(startupAnimationTicks / 45) % 4].pixels)));
+            startupText[0].setBitmap(Bitmap(startupSprites[(startupAnimationTicks / 45) % 4].bitmapId));
             startupText[0].invalidate();
         }
     }
@@ -597,7 +631,8 @@ void Screen1View::handleTickEvent()
     /* Dentro do Settings os gestos sao dele: o eixo vertical move o foco
        (sem "puxar para baixo = voltar") e o clique confirma a linha.  */
     menu.setVerticalBack(false);
-    if (back && previousScreen >= 0) menu.close();
+    if (back && previousScreen == 4) avatarAnimation.requestClose();
+    else if (back && previousScreen >= 0) menu.close();
     const bool navigating = handPresent && !handNear && !back && !click;
     /* Proximity pauses navigation while retaining real hand visibility. */
     menu.tick(handPresent || click, click ? 0 : handX, click ? 0 : handY,
@@ -636,8 +671,60 @@ void Screen1View::handleTickEvent()
         menu.close();
     }
     handleSettingsEvents();
+    if (menu.getScreen()==4)
+    {
+        const uint32_t now=avatarTimeMs();
+        if (previousScreen!=4)
+        {
+            avatarAnimation.enter(now);
+            avatar.setBitmap(Bitmap(avatarIdleIds[0]));
+            avatar.setAlpha(0);
+            avatar.setVisible(true);
+        }
+        else if (avatarAnimation.tick(now,avatarPreparing,avatarSpeaking))
+            avatar.setBitmap(Bitmap(avatarIds[avatarAnimation.current()][avatarAnimation.frame()]));
+        avatar.setAlpha(avatarAnimation.alpha(now));
+        // Logical +X (physical right) maps to framebuffer -Y in Portrait.
+        const bool shiftAvatarRight = avatarAnimation.current()==AvatarAnimation::Smile ||
+                                      avatarAnimation.current()==AvatarAnimation::Coffee;
+        const int16_t avatarY = avatarAnimation.current()==AvatarAnimation::Thinking ? 86 :
+                               shiftAvatarRight ? 88 : 90;
+        if (avatar.getY()!=avatarY)
+        {
+            avatar.invalidate();
+            avatar.setY(avatarY);
+        }
+        avatar.invalidate();
+        if (avatarAnimation.closed()) menu.close();
+    }
+    if (menu.getScreen()!=4 && avatar.isVisible())
+    {
+        avatar.invalidate();
+        avatar.setVisible(false);
+    }
     const bool inSettings = (menu.getScreen() == SCREEN_SETTINGS);
     const bool inChat = (menu.getScreen() == 4);
+    if (inChat || previousScreen==4)
+    {
+        const uint32_t now=avatarTimeMs();
+        const float pulse=0.78f+0.20f*sinf(now*0.0028f);
+        const uint8_t fade=avatarAnimation.alpha(now);
+        for (unsigned i=0; i<6; ++i)
+        {
+            chatRay[i].invalidate();
+            chatRay[i].setVisible(inChat);
+            chatRay[i].setAlpha(static_cast<uint8_t>((i<2 ? 180.0f : 45.0f)*pulse*fade/255.0f));
+            chatRay[i].invalidate();
+        }
+        chatRaySpark.invalidate();
+        chatRaySpark.setVisible(inChat);
+        // Explicit sequence is already used by the original divider animation.
+        chatRaySpark.setBitmap(Bitmap(BITMAP_SPARK_00_ID+(now/100U)%14U));
+        chatRaySpark.setXY(380-chatRaySpark.getWidth()/2,
+            static_cast<int16_t>(239+175*sinf(now*0.0017f)-chatRaySpark.getHeight()/2));
+        chatRaySpark.setAlpha(fade);
+        chatRaySpark.invalidate();
+    }
     if (!inChat || previousScreen != 4) chatHeaderTicks = 0;
     else if (chatHeaderTicks < 14) ++chatHeaderTicks;
     presenter->setLEDBreathColor(0, 255, 255);
@@ -697,7 +784,7 @@ void Screen1View::handleTickEvent()
     /* a esfera acompanha o carrossel com fator MENOR. Girando junto, ela e
        os icones formariam um bloco rigido; a diferenca de velocidade e o
        que da a leitura de duas camadas.                                  */
-    field.tick(menu.getVisibility(), -menu.getAngle() * 0.45f * 57.2958f);
+    field.tick(inChat ? 0.0f : menu.getVisibility(), -menu.getAngle() * 0.45f * 57.2958f);
 
     const int screen = menu.getScreen();
     const bool inMenu = (screen >= 0);
@@ -824,8 +911,8 @@ void Screen1View::handleTickEvent()
             {
                 const TypographyHint& sprite = typographyHints[2];
                 hintText = nullptr;
-                setHint.setBitmapFormat(Bitmap::ARGB8888);
-                setHint.setPixelData(reinterpret_cast<uint8_t*>(const_cast<uint32_t*>(sprite.pixels)));
+
+                setHint.setBitmap(Bitmap(sprite.bitmapId));
                 setHint.setWidth(sprite.width);
                 setHint.setHeight(sprite.height);
                 setHint.setXY((inChat ? 430 : HINT_CX) - sprite.width / 2,
@@ -858,8 +945,16 @@ void Screen1View::handleTickEvent()
 
     /* Keep the divider visible; move it aside while interacting with the UI. */
     {
-        const int16_t lineX = (inSettings || inChat) ? 374 : ((handPresent || inMenu) ? 394 : 314);
-        const int16_t sparkX = (inSettings || inChat) ? 365 : ((handPresent || inMenu) ? 385 : 305);
+        // Chat uses the extended ray at the avatar cut instead of a second divider.
+        if (divLine.isVisible()==inChat || divSpark.isVisible()==inChat)
+        {
+            divLine.invalidate();
+            divSpark.invalidate();
+            divLine.setVisible(!inChat);
+            divSpark.setVisible(!inChat);
+        }
+        const int16_t lineX = inChat ? 404 : (inSettings ? 374 : ((handPresent || inMenu) ? 394 : 314));
+        const int16_t sparkX = inChat ? 395 : (inSettings ? 365 : ((handPresent || inMenu) ? 385 : 305));
         if (divLine.getX() != lineX || divSpark.getX() != sparkX)
         {
             divLine.invalidate();
