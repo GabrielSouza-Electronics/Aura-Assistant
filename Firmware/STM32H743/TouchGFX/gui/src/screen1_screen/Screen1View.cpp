@@ -174,7 +174,8 @@ void Screen1View::setupScreen()
     insert(&battFrame, calendar);
     insert(&battFrame, tasks);
     avatar.setBitmap(Bitmap(avatarIdleIds[0]));
-    avatar.setXY(80,90);
+    // Physical height is 260: keep the image bottom at Y=380.
+    avatar.setXY(120,90);
     avatar.setVisible(false);
     insert(&battFrame, avatar);
     // Extend the existing divider by overlapping two copies 160 px apart.
@@ -687,7 +688,8 @@ void Screen1View::handleTickEvent()
         // Logical +X (physical right) maps to framebuffer -Y in Portrait.
         const bool shiftAvatarRight = avatarAnimation.current()==AvatarAnimation::Smile ||
                                       avatarAnimation.current()==AvatarAnimation::Coffee;
-        const int16_t avatarY = avatarAnimation.current()==AvatarAnimation::Thinking ? 86 :
+        const int16_t avatarY = avatarIsSpeakBitmap(avatar.getBitmapId()) ? 84 :
+                               avatarAnimation.current()==AvatarAnimation::Thinking ? 86 :
                                shiftAvatarRight ? 88 : 90;
         if (avatar.getY()!=avatarY)
         {

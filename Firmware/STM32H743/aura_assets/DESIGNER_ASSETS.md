@@ -24,9 +24,15 @@ and replacing temporary raw arrays with ID tables. Generate Code afterward.
 The Tasks progress ring remains dynamically drawn in RAM, not a static asset.
 Audio WAV/C arrays are independent of Designer image conversion.
 
-The current 300x300 Chat avatar is in `aura/avatar300`, one directory per clip.
-The 124 supplied PNGs are already pre-rotated left. Set their Layout Rotation
-to 90 in Designer, then Generate Code and rebuild before programming.
+The current physical 300x260 Chat avatar is in `aura/avatar300`, one directory
+per clip. All 163 PNGs are pre-rotated left (file size 260x300). Existing 124
+frames retain their Designer settings; 39 Speak frames are imported separately
+and reserved in avatarSpeakIds. All Speak frames use a 6 pixel physical right
+offset (framebuffer Y=84); Screen1View identifies them by explicit bitmap IDs.
+Speak is not part of AvatarAnimation::Count or
+its scheduler; the speaking flag still uses Idle until behavior is specified.
+Before enabling Speak, set its Layout Rotation to 90 in Designer, then Generate
+Code and rebuild. The installer never changes Layout Rotation.
 
 All clips use 10 fps. Idle and specials play forward then backward without
 duplicating the last frame; Blink plays forward. Opening Chat keeps the avatar
@@ -34,7 +40,8 @@ hidden for 1000 ms to let the screen load, then fades Idle in over 2000 ms.
 Idle repeats until the fade completes and its current cycle ends, then plays
 Goodbye as Hello, followed by Smile. Closing waits for the current
 clip and completes Goodbye before leaving. The avatar is positioned at physical
-(90,80), framebuffer (80,90), 10 pixels above its original position.
+(90,120), framebuffer (120,90). Its bottom stays at physical Y=380 despite the
+40 pixel reduction in image height.
 The existing divider is extended to 420 pixels using overlapping copies and
 aligned with the image cut at physical Y=380.
 The ring experiment was cancelled: its widgets, generators and PNGs were removed.

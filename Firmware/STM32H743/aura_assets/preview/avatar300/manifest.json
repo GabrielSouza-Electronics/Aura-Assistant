@@ -1,11 +1,11 @@
 {
   "fps": 10,
-  "size": [
+  "physical_size": [
     300,
-    300
+    260
   ],
   "framebuffer_xy": [
-    90,
+    120,
     90
   ],
   "frames": {
@@ -275,6 +275,6 @@
       1
     ]
   },
-  "estimated_l8_bytes_upper_bound": 11287472,
-  "note": "Smile preview uses all 11 supplied frames pending clarification. No firmware changes."
+  "estimated_l8_bytes_upper_bound": 9799472,
+  "note": "Speak assets are reserved and not animated. Preview does not change firmware."
 }

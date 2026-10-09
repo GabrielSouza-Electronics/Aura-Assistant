@@ -1,4 +1,4 @@
-"""Review-only 300px avatar previews. Inputs are already pre-rotated left."""
+"""Review-only 300x260 avatar previews. Inputs are pre-rotated left."""
 import argparse
 import json
 from pathlib import Path
@@ -27,12 +27,13 @@ def main():
 
     def render(path):
         sprite = Image.open(path).convert('RGBA')
-        assert sprite.size == (300,300), path
+        assert sprite.size == (260,300), path
         assert sprite.getchannel('A').getextrema() == (0,255), path
         assert sprite.getcolors(256) is not None, path
         # Undo source rotation only for physical-view preview, never the source.
         canvas = base.copy()
-        canvas.alpha_composite(sprite.transpose(Image.Transpose.ROTATE_270),(90,90))
+        offset = 4 if path.stem.startswith('Thinking') else 2 if path.stem.startswith(('Smile','Coffee')) else 0
+        canvas.alpha_composite(sprite.transpose(Image.Transpose.ROTATE_270),(90+offset,120))
         image = Image.new('RGBA',(480,480),(18,18,18,255))
         image.paste(canvas,(0,0),mask)
         return image.convert('RGB')
@@ -52,13 +53,13 @@ def main():
         ImageDraw.Draw(sheet).text((cell_x+12,cell_y+484),f'{name}: {count} frames / 10 fps',fill=(230,240,255))
     sheet.save(out/'overview.png')
     rendered['Idle'][0].save(out/'centered.png')
-    prep = sum([rendered[name] for name in ('Thinking','Idle','Smile','blink','Idle')],[])
+    prep = sum([rendered[name] for name in ('Thinking','Idle','blink','Idle')],[])
     prep[0].save(out/'preparation.gif',save_all=True,append_images=prep[1:],duration=100,loop=0,disposal=2)
-    (out/'manifest.json').write_text(json.dumps({'fps':10,'size':[300,300],
-        'framebuffer_xy':[90,90],'frames':GROUPS,'orders':orders,
-        'estimated_l8_bytes_upper_bound':sum(GROUPS.values())*(90000+1028),
-        'note':'Smile preview uses all 11 supplied frames pending clarification. No firmware changes.'},indent=2)+'\n')
-    print(f'{sum(GROUPS.values())} transparent 300x300 frames validated; previews: {out}')
+    (out/'manifest.json').write_text(json.dumps({'fps':10,'physical_size':[300,260],
+        'framebuffer_xy':[120,90],'frames':GROUPS,'orders':orders,
+        'estimated_l8_bytes_upper_bound':sum(GROUPS.values())*(78000+1028),
+        'note':'Speak assets are reserved and not animated. Preview does not change firmware.'},indent=2)+'\n')
+    print(f'{sum(GROUPS.values())} transparent 300x260 frames validated; previews: {out}')
 
 
 if __name__=='__main__':

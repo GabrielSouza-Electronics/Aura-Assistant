@@ -150,6 +150,45 @@ set(TouchGFX_Src
     ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/avatar300/Smile/image_Smile7.cpp
     ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/avatar300/Smile/image_Smile8.cpp
     ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/avatar300/Smile/image_Smile9.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/avatar300/Speak/image_Speak1.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/avatar300/Speak/image_Speak10.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/avatar300/Speak/image_Speak11.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/avatar300/Speak/image_Speak12.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/avatar300/Speak/image_Speak13.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/avatar300/Speak/image_Speak14.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/avatar300/Speak/image_Speak15.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/avatar300/Speak/image_Speak16.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/avatar300/Speak/image_Speak17.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/avatar300/Speak/image_Speak18.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/avatar300/Speak/image_Speak19.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/avatar300/Speak/image_Speak2.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/avatar300/Speak/image_Speak20.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/avatar300/Speak/image_Speak21.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/avatar300/Speak/image_Speak22.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/avatar300/Speak/image_Speak23.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/avatar300/Speak/image_Speak24.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/avatar300/Speak/image_Speak25.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/avatar300/Speak/image_Speak26.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/avatar300/Speak/image_Speak27.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/avatar300/Speak/image_Speak28.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/avatar300/Speak/image_Speak29.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/avatar300/Speak/image_Speak3.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/avatar300/Speak/image_Speak30.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/avatar300/Speak/image_Speak31.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/avatar300/Speak/image_Speak32.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/avatar300/Speak/image_Speak33.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/avatar300/Speak/image_Speak34.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/avatar300/Speak/image_Speak35.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/avatar300/Speak/image_Speak36.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/avatar300/Speak/image_Speak37.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/avatar300/Speak/image_Speak38.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/avatar300/Speak/image_Speak39.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/avatar300/Speak/image_Speak4.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/avatar300/Speak/image_Speak5.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/avatar300/Speak/image_Speak6.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/avatar300/Speak/image_Speak7.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/avatar300/Speak/image_Speak8.cpp
+    ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/avatar300/Speak/image_Speak9.cpp
     ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/avatar300/Thinking/image_Thinking1.cpp
     ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/avatar300/Thinking/image_Thinking10.cpp
     ${CMAKE_SOURCE_DIR}/TouchGFX/generated/images/src/aura/avatar300/Thinking/image_Thinking11.cpp
