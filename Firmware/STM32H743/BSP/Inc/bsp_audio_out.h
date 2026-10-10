@@ -13,7 +13,8 @@ typedef enum
     BSP_AUDIO_OUT_ERROR_RENDER,
     BSP_AUDIO_OUT_ERROR_DMA_START,
     BSP_AUDIO_OUT_ERROR_TIMEOUT,
-    BSP_AUDIO_OUT_ERROR_DMA
+    BSP_AUDIO_OUT_ERROR_DMA,
+    BSP_AUDIO_OUT_CANCELLED
 } BSP_AUDIO_OUT_Status_t;
 
 typedef void (*BSP_AUDIO_OUT_PrepareWait_t)(void);
@@ -30,6 +31,12 @@ void BSP_AUDIO_OUT_SetSynchronizationHooks(BSP_AUDIO_OUT_PrepareWait_t prepare_w
                                            BSP_AUDIO_OUT_Signal_t signal);
 BSP_AUDIO_OUT_Status_t BSP_AUDIO_OUT_PlayPCM48kMonoBlocking(
     const int16_t *pcm_mono, size_t sample_count, uint32_t timeout_ms);
+/* Audio owner only; cancellation may be published from another task. */
+BSP_AUDIO_OUT_Status_t BSP_AUDIO_OUT_PlayPCM48kMonoControlled(
+    const int16_t *pcm_mono, size_t sample_count, uint32_t timeout_ms,
+    const volatile bool *cancel);
+/* Task context. Position consumed by DMA, not the prefilled source offset. */
+bool BSP_AUDIO_OUT_ReadPosition(const int16_t *source, uint32_t *sample);
 /* AudioOutputTask only. Nonblocking, up to 500 ms; restarts an existing effect.
  * Other playback modes retain ownership and return BUSY. */
 BSP_AUDIO_OUT_Status_t BSP_AUDIO_OUT_PlayEffect48kMono(

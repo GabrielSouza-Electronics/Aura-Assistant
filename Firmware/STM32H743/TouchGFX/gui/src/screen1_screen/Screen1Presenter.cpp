@@ -27,6 +27,9 @@ void Screen1Presenter::playMenuSound(MenuSound sound)
     model->playMenuSound(sound);
 }
 
+void Screen1Presenter::setChatAudioActive(bool active) { model->setChatAudioActive(active); }
+bool Screen1Presenter::readChatSpeechFrame(uint8_t& request) { return model->readChatSpeechFrame(request); }
+
 void Screen1Presenter::requestSetting(uint8_t item, int8_t delta)
 {
     model->requestSetting(item, delta);

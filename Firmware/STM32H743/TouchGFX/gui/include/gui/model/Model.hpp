@@ -17,6 +17,8 @@ public:
 
     void tick();
     void playMenuSound(MenuSound sound);
+    void setChatAudioActive(bool active);
+    bool readChatSpeechFrame(uint8_t& request);
     /* Settings: item 0 Wi-Fi, 1 Bluetooth, 2 Brightness, 3 Sound.
        delta +1 = cima (liga / aumenta), -1 = baixo (desliga / diminui). */
     void requestSetting(uint8_t item, int8_t delta);

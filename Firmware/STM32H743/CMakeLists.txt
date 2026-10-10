@@ -139,6 +139,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     Components/WS2812C/ws2812c.c
     Components/Audio/welcome_audio.c
     Components/Audio/ui_audio.c
+    Components/Audio/chat_test_audio.c
     Components/PDM/pdm_decimator.c
     Components/AudioDSP/audio_dsp.c
 )

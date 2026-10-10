@@ -85,6 +85,7 @@ protected:
     touchgfx::Image chatRay[6];
     touchgfx::Image chatRaySpark;
     AvatarAnimation avatarAnimation;
+    bool chatAudioRequested=false, chatClosing=false;
     bool avatarPreparing=false, avatarSpeaking=false;
     uint16_t lastIconId[5];      /* evita setBitmap redundante             */
 

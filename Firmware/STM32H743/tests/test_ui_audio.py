@@ -27,6 +27,13 @@ with tempfile.TemporaryDirectory(prefix='aura_audio_') as directory:
 typedef struct { struct { int Mode; } Init; } DMA_HandleTypeDef;
 typedef struct { DMA_HandleTypeDef *hdmatx; uint32_t ErrorCode; } I2S_HandleTypeDef;
 extern I2S_HandleTypeDef hi2s1;
+extern uint32_t fake_remaining, fake_pending, fake_primask;
+#define __HAL_DMA_GET_COUNTER(h) (fake_remaining)
+#define __HAL_DMA_GET_FLAG(h,f) (fake_pending)
+#define __HAL_DMA_GET_TC_FLAG_INDEX(h) 1U
+#define __get_PRIMASK() (fake_primask)
+#define __disable_irq() (fake_primask=1U)
+#define __set_PRIMASK(v) (fake_primask=(v))
 #define HAL_OK 0
 #define HAL_I2S_ERROR_NONE 0
 #define DMA_NORMAL 0
@@ -62,6 +69,10 @@ I2S_HandleTypeDef hi2s1 = {&dma, 0};
 static int active, starts, stops, fail_start, fail_stop;
 static uint32_t dma_error;
 static uint16_t *buffer, count;
+uint32_t fake_remaining, fake_pending, fake_primask;
+static const int16_t *stream_source;
+static volatile bool cancel_stream;
+static unsigned cancel_test;
 int HAL_I2S_DMAStop(I2S_HandleTypeDef *h) {
     (void)h; ++stops;
     if (fail_stop) { dma_error=8; return 1; }
@@ -72,7 +83,7 @@ int HAL_DMA_GetState(DMA_HandleTypeDef *h) { (void)h; return active ? 1 : HAL_DM
 uint32_t HAL_DMA_GetError(DMA_HandleTypeDef *h) { (void)h; return dma_error; }
 int HAL_I2S_Transmit_DMA(I2S_HandleTypeDef *h, uint16_t *p, uint16_t n) {
     (void)h; assert(!active); if(fail_start) return 1;
-    active=1; ++starts; buffer=p; count=n; return 0;
+    active=1; ++starts; buffer=p; count=n; fake_remaining=n; fake_pending=0; return 0;
 }
 int HAL_DMA_Init(DMA_HandleTypeDef *h) { (void)h; return 0; }
 int HAL_DMA_DeInit(DMA_HandleTypeDef *h) { (void)h; return 0; }
@@ -84,6 +95,29 @@ static unsigned stream_step;
 static void prepare_wait(void) { stream_step=0; }
 static bool stream_wait(uint32_t timeout_ms) {
     (void)timeout_ms;
+    uint32_t position=999;
+    if (cancel_test) {
+        assert(timeout_ms<=10U);
+        cancel_stream=true;
+        return false; /* A poll timeout is not the playback timeout. */
+    }
+    if (stream_step==0) {
+        assert(BSP_AUDIO_OUT_ReadPosition(stream_source,&position) && position==0);
+        fake_remaining=24000;
+        assert(BSP_AUDIO_OUT_ReadPosition(stream_source,&position) && position==12000);
+        assert(!BSP_AUDIO_OUT_ReadPosition(NULL,&position));
+        assert(fake_primask==0);
+    } else if (stream_step==1) {
+        fake_remaining=48000; fake_pending=1;
+        assert(BSP_AUDIO_OUT_ReadPosition(stream_source,&position) && position==24000);
+        fake_remaining=0;
+        assert(BSP_AUDIO_OUT_ReadPosition(stream_source,&position) && position==24000);
+        fake_remaining=48000; fake_pending=0;
+    } else {
+        fake_remaining=30000;
+        assert(BSP_AUDIO_OUT_ReadPosition(stream_source,&position) && position==33000);
+        fake_remaining=24000;
+    }
     assert(stream_step < 3);
     if (stream_step++ % 2 == 0) BSP_AUDIO_OUT_HalfTransferCallback();
     else BSP_AUDIO_OUT_TransferCompleteCallback();
@@ -120,10 +154,20 @@ int main(void) {
     assert(BSP_AUDIO_OUT_PlayEffect48kMono(tick,4)==BSP_AUDIO_OUT_ERROR_DMA);
     fail_stop=0;
     static int16_t success[33600];
+    stream_source=success;
     for (unsigned i=0;i<33600;++i) success[i]=1000;
     BSP_AUDIO_OUT_SetSynchronizationHooks(prepare_wait,stream_wait,NULL);
     assert(BSP_AUDIO_OUT_PlayPCM48kMonoBlocking(success,33600,2000)==BSP_AUDIO_OUT_OK);
     assert(stream_step==3 && !active && !BSP_AUDIO_OUT_IsBusy());
+    uint32_t position;
+    assert(!BSP_AUDIO_OUT_ReadPosition(success,&position));
+    cancel_stream=true;
+    const int starts_before=starts;
+    assert(BSP_AUDIO_OUT_PlayPCM48kMonoControlled(success,33600,2000,&cancel_stream)==BSP_AUDIO_OUT_CANCELLED);
+    assert(starts==starts_before);
+    cancel_stream=false; cancel_test=1;
+    assert(BSP_AUDIO_OUT_PlayPCM48kMonoControlled(success,33600,2000,&cancel_stream)==BSP_AUDIO_OUT_CANCELLED);
+    assert(!active && !BSP_AUDIO_OUT_IsBusy() && !BSP_AUDIO_OUT_ReadPosition(success,&position));
     puts("PASS: lossless assets, mono/stereo volume, restart, replacement, completion, ownership and start failure");
 }
 ''')
@@ -146,20 +190,60 @@ osThreadId_t osThreadGetId(void);
 uint32_t osThreadFlagsSet(osThreadId_t thread,uint32_t flags);
 uint32_t osThreadFlagsWait(uint32_t flags,uint32_t options,uint32_t timeout);
 int osDelay(uint32_t ticks);
+uint32_t osKernelGetTickCount(void);
+uint32_t osKernelGetTickFreq(void);
 ''')
     (tmp / 'owner.c').write_text(r'''
 #include "app_ui_audio.h"
 #include "bsp_audio_out.h"
 #include "ui_audio.h"
 #include "cmsis_os2.h"
+#include "chat_test_audio.h"
 #include <assert.h>
 #include <setjmp.h>
 #include <stdio.h>
 static jmp_buf done;
 static unsigned played, effects;
+static unsigned chats;
+static uint32_t fake_ticks;
+static bool fake_chat_active;
+static uint32_t fake_position;
+bool BSP_AUDIO_OUT_ReadPosition(const int16_t *p,uint32_t *s) {
+    assert(p==chat_test_pcm); *s=fake_position; return fake_chat_active;
+}
+uint8_t BSP_AUDIO_OUT_GetVolume(void) { return 5U; }
+BSP_AUDIO_OUT_Status_t BSP_AUDIO_OUT_PlayPCM48kMonoControlled(const int16_t *p,size_t n,uint32_t t,const volatile bool *c)
+{
+    assert(p==chat_test_pcm && n==CHAT_TEST_SAMPLE_COUNT && t>4920U && !*c);
+    uint8_t frame=99;
+    fake_chat_active=true; fake_position=0;
+    assert(APP_UIAudio_ReadChatFrame(&frame) && frame<8);
+    fake_position=14880;
+    assert(APP_UIAudio_ReadChatFrame(&frame) && frame==13);
+    fake_position=110000;
+    assert(APP_UIAudio_ReadChatFrame(&frame) && frame<8);
+    fake_chat_active=false;
+    if (++chats==1) {
+        APP_UIAudio_SetChatActive(false);
+        assert(*c && !APP_UIAudio_ReadChatFrame(&frame));
+        APP_UIAudio_SetChatActive(true); /* Re-entry while owner unwinds. */
+        assert(*c);
+        return BSP_AUDIO_OUT_CANCELLED;
+    }
+    assert(chats==2);
+    return BSP_AUDIO_OUT_OK;
+}
 osThreadId_t osThreadGetId(void) { return (void *)1; }
 uint32_t osThreadFlagsSet(osThreadId_t thread,uint32_t flags) { assert(thread==(void *)1); return flags; }
-int osDelay(uint32_t ticks) { (void)ticks; return 0; }
+uint32_t osKernelGetTickCount(void) { return fake_ticks; }
+uint32_t osKernelGetTickFreq(void) { return 1000U; }
+int osDelay(uint32_t ticks) {
+    fake_ticks+=ticks;
+    uint8_t frame;
+    assert(!APP_UIAudio_ReadChatFrame(&frame));
+    if (chats==3) APP_UIAudio_SetChatActive(false);
+    return 0;
+}
 bool BSP_AUDIO_OUT_IsBusy(void) { return false; }
 BSP_AUDIO_OUT_Status_t BSP_AUDIO_OUT_PlayEffect48kMono(const int16_t *pcm,size_t count)
 { (void)pcm; (void)count; ++effects; return BSP_AUDIO_OUT_OK; }
@@ -188,6 +272,16 @@ int main(void)
     APP_UIAudio_Request(APP_UI_AUDIO_TASK_COMPLETE);
     if (!setjmp(done)) APP_UIAudio_Run();
     puts("PASS: distinct completion/reopen PCM, FIFO sound order and requests during playback");
+    APP_UIAudio_SetChatActive(true);
+    APP_UIAudio_SetChatActive(false); /* Exit before the request is consumed. */
+    if (!setjmp(done)) APP_UIAudio_Run();
+    assert(chats==0);
+    APP_UIAudio_SetChatActive(true);
+    if (!setjmp(done)) APP_UIAudio_Run();
+    assert(chats==2 && fake_ticks==0U);
+    uint8_t frame;
+    assert(!APP_UIAudio_ReadChatFrame(&frame));
+    puts("PASS: Chat cancellation, snapshot, rapid re-entry and single playback without repetition");
     return 0;
 }
 ''')
@@ -195,5 +289,6 @@ int main(void)
     subprocess.run([args.compiler, '-std=c11', '-Wall', '-Wextra', '-Werror',
         f'-I{tmp}', f'-I{root / "BSP/Inc"}', f'-I{root / "App/Inc"}',
         f'-I{root / "Components/Audio"}', str(root / 'App/Src/app_ui_audio.c'),
-        str(root / 'Components/Audio/ui_audio.c'), str(tmp / 'owner.c'), '-o', str(exe)], check=True)
+        str(root / 'Components/Audio/ui_audio.c'), str(root / 'Components/Audio/chat_test_audio.c'),
+        str(tmp / 'owner.c'), '-o', str(exe)], check=True)
     subprocess.run([str(exe)], check=True)

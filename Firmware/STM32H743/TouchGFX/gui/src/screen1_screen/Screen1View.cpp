@@ -563,6 +563,7 @@ bool Screen1View::tickStartup()
 
 void Screen1View::tearDownScreen()
 {
+    presenter->setChatAudioActive(false);
     Screen1ViewBase::tearDownScreen();
 }
 
@@ -632,7 +633,11 @@ void Screen1View::handleTickEvent()
     /* Dentro do Settings os gestos sao dele: o eixo vertical move o foco
        (sem "puxar para baixo = voltar") e o clique confirma a linha.  */
     menu.setVerticalBack(false);
-    if (back && previousScreen == 4) avatarAnimation.requestClose();
+    if (back && previousScreen == 4) {
+        chatClosing=true;
+        presenter->setChatAudioActive(false);
+        avatarAnimation.requestClose();
+    }
     else if (back && previousScreen >= 0) menu.close();
     const bool navigating = handPresent && !handNear && !back && !click;
     /* Proximity pauses navigation while retaining real hand visibility. */
@@ -677,18 +682,28 @@ void Screen1View::handleTickEvent()
         const uint32_t now=avatarTimeMs();
         if (previousScreen!=4)
         {
-            avatarAnimation.enter(now);
-            avatar.setBitmap(Bitmap(avatarIdleIds[0]));
+            avatarAnimation.enterSpeech(now);
+            chatAudioRequested=chatClosing=false;
+            avatar.setBitmap(Bitmap(avatarSpeakIds[0]));
             avatar.setAlpha(0);
             avatar.setVisible(true);
         }
-        else if (avatarAnimation.tick(now,avatarPreparing,avatarSpeaking))
-            avatar.setBitmap(Bitmap(avatarIds[avatarAnimation.current()][avatarAnimation.frame()]));
+        else {
+            if (!chatAudioRequested && !chatClosing && avatarAnimation.alpha(now)==255U) {
+                presenter->setChatAudioActive(true);
+                chatAudioRequested=true;
+            }
+            uint8_t speechFrame=static_cast<uint8_t>((now/120U)%8U);
+            if (!chatClosing) presenter->readChatSpeechFrame(speechFrame);
+            avatarAnimation.setSpeechFrame(speechFrame);
+            if (avatarAnimation.tick(now,avatarPreparing,avatarSpeaking))
+                avatar.setBitmap(Bitmap(avatarIds[avatarAnimation.current()][avatarAnimation.frame()]));
+        }
         avatar.setAlpha(avatarAnimation.alpha(now));
         // Logical +X (physical right) maps to framebuffer -Y in Portrait.
         const bool shiftAvatarRight = avatarAnimation.current()==AvatarAnimation::Smile ||
                                       avatarAnimation.current()==AvatarAnimation::Coffee;
-        const int16_t avatarY = avatarIsSpeakBitmap(avatar.getBitmapId()) ? 84 :
+        const int16_t avatarY = avatarIsSpeakBitmap(avatar.getBitmapId()) ? 82 :
                                avatarAnimation.current()==AvatarAnimation::Thinking ? 86 :
                                shiftAvatarRight ? 88 : 90;
         if (avatar.getY()!=avatarY)
@@ -701,6 +716,7 @@ void Screen1View::handleTickEvent()
     }
     if (menu.getScreen()!=4 && avatar.isVisible())
     {
+        presenter->setChatAudioActive(false);
         avatar.invalidate();
         avatar.setVisible(false);
     }

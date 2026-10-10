@@ -18,7 +18,79 @@ extern "C"
 #include <mmsystem.h>
 #include <cwchar>
 #include <cstring>
+#include <cstdlib>
+#include "../../../../Components/Audio/chat_test_audio.h"
+#include "../../../../Components/Audio/chat_test_timeline.h"
 #endif
+
+#if defined(_WIN32) && !defined(STM32H743xx)
+namespace {
+bool chatAudioOpen=false;
+MCIERROR chatMci(const wchar_t* command, wchar_t* result=nullptr, UINT capacity=0)
+{
+    typedef MCIERROR (WINAPI *SendFn)(LPCWSTR, LPWSTR, UINT, HWND);
+    static HMODULE library=LoadLibraryW(L"winmm.dll");
+    static SendFn send=nullptr;
+    if (!send && library) {
+        const FARPROC address=GetProcAddress(library,"mciSendStringW");
+        static_assert(sizeof(send)==sizeof(address), "Windows function pointer size");
+        std::memcpy(&send,&address,sizeof(send));
+    }
+    return send ? send(command,result,capacity,nullptr) : 1U;
+}
+}
+#endif
+
+void Model::setChatAudioActive(bool active)
+{
+#if defined(STM32H743xx)
+    APP_UIAudio_SetChatActive(active);
+#elif defined(_WIN32)
+    if (chatAudioOpen) { chatMci(L"close aura_chat_test"); chatAudioOpen=false; }
+    if (!active || simVolume==0U) return;
+    wchar_t path[MAX_PATH];
+    const DWORD length=GetModuleFileNameW(nullptr,path,MAX_PATH);
+    if (length==0U || length>=MAX_PATH) return;
+    wchar_t* end=wcsrchr(path,L'\\');
+    if (!end) return;
+    *(end+1)=L'\0';
+    const wchar_t* relative=L"..\\..\\..\\aura_assets\\audio\\chat_test.wav";
+    if (wcslen(path)+wcslen(relative)>=MAX_PATH) return;
+    wcscat(path,relative);
+    wchar_t command[MAX_PATH+80];
+    swprintf(command,sizeof(command)/sizeof(command[0]),
+             L"open \"%ls\" type waveaudio alias aura_chat_test",path);
+    if (chatMci(command)!=0U) return;
+    chatAudioOpen=true;
+    if (chatMci(L"set aura_chat_test time format samples")!=0U ||
+        chatMci(L"play aura_chat_test from 0")!=0U) {
+        chatMci(L"close aura_chat_test"); chatAudioOpen=false;
+    }
+#else
+    (void)active;
+#endif
+}
+
+bool Model::readChatSpeechFrame(uint8_t& request)
+{
+#if defined(STM32H743xx)
+    return APP_UIAudio_ReadChatFrame(&request);
+#elif defined(_WIN32)
+    if (!chatAudioOpen) return false;
+    wchar_t result[32];
+    if (chatMci(L"status aura_chat_test mode",result,32)!=0U || wcscmp(result,L"playing")!=0) {
+        chatMci(L"close aura_chat_test"); chatAudioOpen=false;
+        return false;
+    }
+    if (chatMci(L"status aura_chat_test position",result,32)!=0U) return false;
+    const uint32_t sample=static_cast<uint32_t>(wcstoul(result,nullptr,10));
+    request=SpeechAnimation_Frame(chat_test_cues,CHAT_TEST_CUE_COUNT,sample,CHAT_TEST_SAMPLE_RATE);
+    return true;
+#else
+    (void)request;
+    return false;
+#endif
+}
 
 Model::Model() : modelListener(0), lastWifiLevel(0xFFU), lastVolume(0xFFU)
 {

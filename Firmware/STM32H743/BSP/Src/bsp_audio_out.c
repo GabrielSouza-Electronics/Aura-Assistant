@@ -25,6 +25,8 @@ static volatile uint8_t bsp_audio_out_volume = BSP_AUDIO_OUT_DEFAULT_VOLUME;
 static const int16_t *bsp_audio_out_pcm_source;
 static size_t bsp_audio_out_pcm_sample_count;
 static size_t bsp_audio_out_pcm_offset;
+static volatile uint32_t bsp_audio_out_cycles;
+static volatile bool bsp_audio_out_started;
 static BSP_AUDIO_OUT_PrepareWait_t bsp_audio_out_prepare_wait;
 static BSP_AUDIO_OUT_Wait_t bsp_audio_out_wait;
 static BSP_AUDIO_OUT_Signal_t bsp_audio_out_signal;
@@ -184,6 +186,14 @@ BSP_AUDIO_OUT_Status_t BSP_AUDIO_OUT_PlayEffect48kMono(
 BSP_AUDIO_OUT_Status_t BSP_AUDIO_OUT_PlayPCM48kMonoBlocking(
     const int16_t *pcm_mono, size_t sample_count, uint32_t timeout_ms)
 {
+    return BSP_AUDIO_OUT_PlayPCM48kMonoControlled(pcm_mono, sample_count,
+                                                timeout_ms, NULL);
+}
+
+BSP_AUDIO_OUT_Status_t BSP_AUDIO_OUT_PlayPCM48kMonoControlled(
+    const int16_t *pcm_mono, size_t sample_count, uint32_t timeout_ms,
+    const volatile bool *cancel)
+{
     const uint32_t start_tick = HAL_GetTick();
 
     if ((pcm_mono == NULL) || (sample_count == 0U))
@@ -194,6 +204,7 @@ BSP_AUDIO_OUT_Status_t BSP_AUDIO_OUT_PlayPCM48kMonoBlocking(
     {
         return BSP_AUDIO_OUT_ERROR_BUSY;
     }
+    if (cancel != NULL && *cancel) return BSP_AUDIO_OUT_CANCELLED;
 
     if (BSP_AUDIO_OUT_GetVolume() == 0U)
     {
@@ -203,6 +214,8 @@ BSP_AUDIO_OUT_Status_t BSP_AUDIO_OUT_PlayPCM48kMonoBlocking(
     bsp_audio_out_pcm_source = pcm_mono;
     bsp_audio_out_pcm_sample_count = sample_count;
     bsp_audio_out_pcm_offset = 0U;
+    bsp_audio_out_cycles = 0U;
+    bsp_audio_out_started = false;
     bsp_audio_out_pcm_end_half = 0xFFU;
     bsp_audio_out_pcm_stream = true;
     bsp_audio_out_busy = true;
@@ -226,6 +239,7 @@ BSP_AUDIO_OUT_Status_t BSP_AUDIO_OUT_PlayPCM48kMonoBlocking(
     {
         __NOP();
     }
+    if (bsp_audio_out_prepare_wait != NULL) bsp_audio_out_prepare_wait();
     if (HAL_I2S_Transmit_DMA(&hi2s1,
                              (uint16_t *)(void *)bsp_audio_out_dma_buffer,
                              (uint16_t)BSP_AUDIO_OUT_STEREO_SAMPLES) != HAL_OK)
@@ -237,8 +251,17 @@ BSP_AUDIO_OUT_Status_t BSP_AUDIO_OUT_PlayPCM48kMonoBlocking(
         return BSP_AUDIO_OUT_ERROR_DMA_START;
     }
 
+    bsp_audio_out_started = true;
     while (bsp_audio_out_busy)
     {
+        if (cancel != NULL && *cancel)
+        {
+            (void)HAL_I2S_DMAStop(&hi2s1);
+            bsp_audio_out_pcm_stream = false;
+            bsp_audio_out_busy = false;
+            HAL_GPIO_WritePin(I2S_SDMODE_GPIO_Port, I2S_SDMODE_Pin, GPIO_PIN_RESET);
+            return BSP_AUDIO_OUT_CANCELLED;
+        }
         if ((HAL_GetTick() - start_tick) >= timeout_ms)
         {
             (void)HAL_I2S_DMAStop(&hi2s1);
@@ -250,8 +273,10 @@ BSP_AUDIO_OUT_Status_t BSP_AUDIO_OUT_PlayPCM48kMonoBlocking(
         if (bsp_audio_out_wait != NULL)
         {
             const uint32_t elapsed = HAL_GetTick() - start_tick;
+            if (elapsed >= timeout_ms) continue;
             const uint32_t remaining = timeout_ms - elapsed;
-            if (!bsp_audio_out_wait(remaining) && bsp_audio_out_busy)
+            const uint32_t wait_ms = cancel != NULL && remaining > 10U ? 10U : remaining;
+            if (!bsp_audio_out_wait(wait_ms) && bsp_audio_out_busy && cancel == NULL)
             {
                 (void)HAL_I2S_DMAStop(&hi2s1);
                 bsp_audio_out_pcm_stream = false;
@@ -269,6 +294,32 @@ BSP_AUDIO_OUT_Status_t BSP_AUDIO_OUT_PlayPCM48kMonoBlocking(
 
     return bsp_audio_out_dma_error ? BSP_AUDIO_OUT_ERROR_DMA
                                    : BSP_AUDIO_OUT_OK;
+}
+
+bool BSP_AUDIO_OUT_ReadPosition(const int16_t *source, uint32_t *sample)
+{
+    if (sample == NULL) return false;
+    const uint32_t primask = __get_PRIMASK();
+    __disable_irq();
+    const bool active = bsp_audio_out_busy && bsp_audio_out_pcm_stream &&
+                        bsp_audio_out_started && bsp_audio_out_pcm_source == source;
+    if (active)
+    {
+        const uint32_t before = __HAL_DMA_GET_COUNTER(hi2s1.hdmatx);
+        const bool pending = __HAL_DMA_GET_FLAG(hi2s1.hdmatx,
+                                __HAL_DMA_GET_TC_FLAG_INDEX(hi2s1.hdmatx)) != 0U;
+        const uint32_t after = __HAL_DMA_GET_COUNTER(hi2s1.hdmatx);
+        /* DMA keeps running while CPU IRQs are masked. Account for a reload
+         * between the reads as well as a completed, not-yet-serviced cycle. */
+        const uint32_t cycles = bsp_audio_out_cycles + ((pending || after > before) ? 1U : 0U);
+        const uint32_t offset = pending && after == 0U ? 0U :
+                                (BSP_AUDIO_OUT_STEREO_SAMPLES - after) / 2U;
+        uint32_t position = cycles * (BSP_AUDIO_OUT_STEREO_SAMPLES / 2U) + offset;
+        if (position > bsp_audio_out_pcm_sample_count) position = bsp_audio_out_pcm_sample_count;
+        *sample = position;
+    }
+    __set_PRIMASK(primask);
+    return active;
 }
 
 bool BSP_AUDIO_OUT_IsBusy(void)
@@ -293,6 +344,7 @@ void BSP_AUDIO_OUT_TransferCompleteCallback(void)
     }
     if (bsp_audio_out_pcm_stream)
     {
+        ++bsp_audio_out_cycles;
         if (bsp_audio_out_pcm_end_half == 1U)
         {
             (void)HAL_I2S_DMAStop(&hi2s1);

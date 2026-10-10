@@ -1,0 +1,38 @@
+{
+  "duration_seconds": 4.92,
+  "sample_count": 236160,
+  "silence_rms_threshold": 600.817587423715,
+  "short_open_rms_threshold": 3098.304465559695,
+  "cues": [
+    {
+      "start_sample": 14880,
+      "end_sample": 31200,
+      "first_frame": 14,
+      "last_frame": 23
+    },
+    {
+      "start_sample": 42720,
+      "end_sample": 74400,
+      "first_frame": 23,
+      "last_frame": 37
+    },
+    {
+      "start_sample": 76320,
+      "end_sample": 83520,
+      "first_frame": 9,
+      "last_frame": 14
+    },
+    {
+      "start_sample": 135840,
+      "end_sample": 162240,
+      "first_frame": 23,
+      "last_frame": 37
+    },
+    {
+      "start_sample": 165600,
+      "end_sample": 189120,
+      "first_frame": 23,
+      "last_frame": 37
+    }
+  ]
+}
