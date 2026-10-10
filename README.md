@@ -1,5 +1,7 @@
 # Aura Assistant
 
+- [Aura Assistant Dossier PDF](AuraAssistant_Dossier.PDF)
+
 **Aura Assistant** is a custom embedded smart desktop assistant designed around a dual-PCB architecture, combining high-performance STM32 processing, wireless connectivity, audio capture/playback, a 480×480 graphical interface, gesture sensing, motion sensing and a rechargeable battery power system.
 
 The project was developed from the ground up, including system architecture, schematic design, PCB layout, signal and power integrity considerations, mechanical integration and embedded firmware.
