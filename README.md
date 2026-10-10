@@ -1,6 +1,6 @@
 # Aura Assistant
 
-- [Aura Assistant Dossier PDF](AuraAssistant_Dossier.PDF)
+- [Aura Assistant Dossier PDF](/AuraAssistant_Dossier.pdf)
 
 **Aura Assistant** is a custom embedded smart desktop assistant designed around a dual-PCB architecture, combining high-performance STM32 processing, wireless connectivity, audio capture/playback, a 480×480 graphical interface, gesture sensing, motion sensing and a rechargeable battery power system.
 
@@ -18,7 +18,7 @@ The Aura Assistant hardware is divided into two custom PCBs: the **Main Board**,
 
 ### Main Board
 
-- [Schematic - Main Board REV01](Hardware/Main_Board/Schematic_PCB_Main_REV01.PDF)
+- [Schematic - Main Board REV01](Hardware/Main_Board/Schematic_PCB_Main_REV01.pdf)
 - [PCB Design Dossier - Main Board](Hardware/Main_Board/Aura_MainBoard_Design_Dossier.pdf)
 - [PCB Fabrication Drawing - Main Board REV01](Hardware/Main_Board/Fabrication_PCB_Main_REV01.PDF)
 - [PCB 3D Views - Main Board REV01](Hardware/Main_Board/3D_PCB_Main_REV01.PDF)
